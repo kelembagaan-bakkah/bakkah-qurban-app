@@ -33,7 +33,7 @@
               </button>
               <img src="./assets/icons/icon-512.png" alt="" class="brand-logo">
               <div class="brand-copy">
-                <h1>LAPORAN PROGRES HEWAN KURBAN</h1>
+                <h2>LAPORAN PROGRES HEWAN KURBAN</h2>
                 <p>Pantau progres penyembelihan dan distribusi daging secara real-time</p>
               </div>
             </div>
@@ -331,7 +331,7 @@
                   <span x-text="item['Status Sembelihan']"></span>
                   <button type="button" class="btn-secondary" @click="toggleStatus(item)" :disabled="saving">
                     <span class="button-spinner dark" x-show="saving"></span>
-                    <span x-text="saving ? 'Update...' : 'Toggle Status'"></span>
+                    <span x-text="saving ? 'Update...' : 'Update'"></span>
                   </button>
                 </article>
               </template>
