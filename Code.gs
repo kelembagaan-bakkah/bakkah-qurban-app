@@ -39,6 +39,29 @@ const DEFAULT_USERS = [
   ['developer', 'dev123', 'Developer', 'Developer', 'ACTIVE'],
 ];
 
+// ── Module-level cache ──
+let _scriptTimezone = null;
+
+function getTimezone_() {
+  if (!_scriptTimezone) _scriptTimezone = Session.getScriptTimeZone();
+  return _scriptTimezone;
+}
+
+// ── Helper: baca headers sheet sekali ──
+function getHeaderMap_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  return {
+    headers,
+    indexOf: (name) => {
+      const idx = headers.indexOf(name);
+      if (idx === -1) throw new Error(`Kolom ${name} tidak ditemukan di sheet ${sheet.getName()}.`);
+      return idx + 1;
+    },
+  };
+}
+
+// ── Public API ──
+
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
 
@@ -68,6 +91,8 @@ function onOpen() {
     .addToUi();
 }
 
+// ── Database initialization (hanya dipanggil dari menu/action khusus) ──
+
 function initDatabase() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -90,9 +115,10 @@ function initDatabase() {
   return { success: true, message: 'Database berhasil diinisiasi di active spreadsheet.' };
 }
 
-function getAppData() {
-  initDatabase();
+// ── Action functions (tanpa initDatabase) ──
 
+function getAppData() {
+  // OPTIMIZED: Tidak panggil initDatabase(), baca sheet langsung
   const hewan = readSheetAsObjects_(SHEETS.HEWAN);
   const kupon = readSheetAsObjects_(SHEETS.KUPON);
   const pengiriman = readSheetAsObjects_(SHEETS.PENGIRIMAN);
@@ -119,7 +145,6 @@ function getAppData() {
 }
 
 function registerHewan(payload) {
-  initDatabase();
   const jenis = String(payload.jenis || '').trim();
   const qty = Number(payload.qty || 0);
 
@@ -127,13 +152,15 @@ function registerHewan(payload) {
   if (!Number.isInteger(qty) || qty < 1) throw new Error('Qty harus berupa angka minimal 1.');
 
   const sheet = getSheet_(SHEETS.HEWAN);
-  const existing = readSheetAsObjects_(SHEETS.HEWAN);
+  // OPTIMIZED: Baca existing untuk hitung startNumber, tapi pakai array bukan readSheetAsObjects_ untuk ID
+  const existingData = readSheetAsObjects_(SHEETS.HEWAN);
   const now = new Date();
-  const startNumber = existing.filter((item) => item.Jenis === jenis).length + 1;
+  const startNumber = existingData.filter((item) => item.Jenis === jenis).length + 1;
   const rows = [];
+  const width = 4;
 
   for (let i = 0; i < qty; i += 1) {
-    const id = nextId_(SHEETS.HEWAN, 'ID', 4, existing.length + rows.length + 1);
+    const id = nextId_(sheet, width);
     const number = startNumber + i;
     rows.push([id, `${jenis} ${number}`, jenis, 'PENDING', 'RPH', now, now]);
   }
@@ -143,7 +170,6 @@ function registerHewan(payload) {
 }
 
 function inputKupon(payload) {
-  initDatabase();
   const jenis = String(payload.jenis || '').trim();
   const qty = Number(payload.qty || 0);
 
@@ -151,42 +177,53 @@ function inputKupon(payload) {
   if (!Number.isInteger(qty) || qty < 1) throw new Error('Qty harus berupa angka minimal 1.');
 
   const sheet = getSheet_(SHEETS.KUPON);
-  const id = `KPN-${nextId_(SHEETS.KUPON, 'ID Kupon', 4)}`;
+  const id = `KPN-${nextId_(sheet, 4)}`;
   sheet.appendRow([id, jenis, qty, new Date()]);
 
   return { success: true, message: `Kupon ${jenis} sebanyak ${qty} berhasil dicatat.` };
 }
 
 function updateStatusSembelihan(id, status) {
-  initDatabase();
   if (!['PENDING', 'SELESAI'].includes(status)) throw new Error('Status sembelihan tidak valid.');
 
   const sheet = getSheet_(SHEETS.HEWAN);
   const row = findRowByValue_(sheet, 'ID', id);
   if (row < 2) throw new Error('Data hewan tidak ditemukan.');
 
-  const statusCol = getColumnIndex_(sheet, 'Status Sembelihan');
-  const updatedCol = getColumnIndex_(sheet, 'Tanggal Update');
+  // OPTIMIZED: Baca header sekali untuk semua kolom
+  const h = getHeaderMap_(sheet);
+  const statusCol = h.indexOf('Status Sembelihan');
+  const updatedCol = h.indexOf('Tanggal Update');
+  const now = new Date();
+
+  // OPTIMIZED: Update dua kolom berbeda (masih dua setValue karena kolom tidak bersebelahan)
   sheet.getRange(row, statusCol).setValue(status);
-  sheet.getRange(row, updatedCol).setValue(new Date());
+  sheet.getRange(row, updatedCol).setValue(now);
 
   return { success: true, message: `Status hewan ${id} diubah menjadi ${status}.` };
 }
 
 function createPengiriman(payload) {
-  initDatabase();
   const idHewan = String(payload.idHewan || '').trim();
   const hewanSheet = getSheet_(SHEETS.HEWAN);
   const hewanRow = findRowByValue_(hewanSheet, 'ID', idHewan);
   if (hewanRow < 2) throw new Error('Hewan tidak ditemukan.');
 
-  const hewan = getRowObject_(hewanSheet, hewanRow);
+  // OPTIMIZED: Baca headers hewanSheet sekali
+  const hewanH = getHeaderMap_(hewanSheet);
+  const hewanHeaders = hewanH.headers;
+  const hewanValues = hewanSheet.getRange(hewanRow, 1, 1, hewanSheet.getLastColumn()).getValues()[0];
+  const hewan = hewanHeaders.reduce((obj, header, index) => {
+    obj[header] = hewanValues[index];
+    return obj;
+  }, {});
+
   if (hewan['Status Sembelihan'] !== 'SELESAI') throw new Error('Hanya hewan berstatus SELESAI yang bisa dikirim.');
   if (hewan.Lokasi !== 'RPH') throw new Error('Hewan ini tidak berada di RPH.');
 
   const qty = normalizePartQty_(payload);
   const pengirimanSheet = getSheet_(SHEETS.PENGIRIMAN);
-  const idPengiriman = `KRM-${nextId_(SHEETS.PENGIRIMAN, 'ID Pengiriman', 4)}`;
+  const idPengiriman = `KRM-${nextId_(pengirimanSheet, 4)}`;
   const now = new Date();
 
   pengirimanSheet.appendRow([
@@ -205,30 +242,44 @@ function createPengiriman(payload) {
     '',
   ]);
 
-  hewanSheet.getRange(hewanRow, getColumnIndex_(hewanSheet, 'Lokasi')).setValue('Dalam Pengiriman');
-  hewanSheet.getRange(hewanRow, getColumnIndex_(hewanSheet, 'Tanggal Update')).setValue(now);
+  // OPTIMIZED: Pakai header map yang sudah dibaca
+  const lokasiCol = hewanH.indexOf('Lokasi');
+  const updatedCol = hewanH.indexOf('Tanggal Update');
+  hewanSheet.getRange(hewanRow, lokasiCol).setValue('Dalam Pengiriman');
+  hewanSheet.getRange(hewanRow, updatedCol).setValue(now);
 
   return { success: true, message: `Pengiriman ${idPengiriman} berhasil dibuat.` };
 }
 
 function receivePengiriman(idPengiriman) {
-  initDatabase();
   const pengirimanSheet = getSheet_(SHEETS.PENGIRIMAN);
   const pengirimanRow = findRowByValue_(pengirimanSheet, 'ID Pengiriman', idPengiriman);
   if (pengirimanRow < 2) throw new Error('Pengiriman tidak ditemukan.');
 
-  const pengiriman = getRowObject_(pengirimanSheet, pengirimanRow);
+  // OPTIMIZED: Baca headers pengirimanSheet + data baris sekali
+  const pngH = getHeaderMap_(pengirimanSheet);
+  const pngHeaders = pngH.headers;
+  const pngValues = pengirimanSheet.getRange(pengirimanRow, 1, 1, pengirimanSheet.getLastColumn()).getValues()[0];
+  const pengiriman = pngHeaders.reduce((obj, header, index) => {
+    obj[header] = pngValues[index];
+    return obj;
+  }, {});
+
   if (pengiriman.Status === 'DITERIMA') throw new Error('Pengiriman ini sudah diterima.');
 
   const now = new Date();
-  pengirimanSheet.getRange(pengirimanRow, getColumnIndex_(pengirimanSheet, 'Status')).setValue('DITERIMA');
-  pengirimanSheet.getRange(pengirimanRow, getColumnIndex_(pengirimanSheet, 'Tanggal Terima')).setValue(now);
+  const statusCol = pngH.indexOf('Status');
+  const terimaCol = pngH.indexOf('Tanggal Terima');
+  pengirimanSheet.getRange(pengirimanRow, statusCol).setValue('DITERIMA');
+  pengirimanSheet.getRange(pengirimanRow, terimaCol).setValue(now);
 
   const hewanSheet = getSheet_(SHEETS.HEWAN);
   const hewanRow = findRowByValue_(hewanSheet, 'ID', pengiriman['ID Hewan']);
   if (hewanRow >= 2) {
-    hewanSheet.getRange(hewanRow, getColumnIndex_(hewanSheet, 'Lokasi')).setValue('Pondok');
-    hewanSheet.getRange(hewanRow, getColumnIndex_(hewanSheet, 'Tanggal Update')).setValue(now);
+    // OPTIMIZED: Baca headers hewanSheet sekali
+    const hewanH = getHeaderMap_(hewanSheet);
+    hewanSheet.getRange(hewanRow, hewanH.indexOf('Lokasi')).setValue('Pondok');
+    hewanSheet.getRange(hewanRow, hewanH.indexOf('Tanggal Update')).setValue(now);
   }
 
   return { success: true, message: `Pengiriman ${idPengiriman} diterima di Pondok.` };
@@ -243,7 +294,6 @@ function inputDagingKeluar(payload) {
 }
 
 function login(payload) {
-  initDatabase();
   const username = String(payload.username || '').trim();
   const password = String(payload.password || '').trim();
 
@@ -263,6 +313,8 @@ function login(payload) {
     role: user.Role,
   };
 }
+
+// ── API handler ──
 
 function handleApiRequest_(params) {
   const callback = params.callback || '';
@@ -313,6 +365,8 @@ function handleApiRequest_(params) {
   }
 }
 
+// ── Utility functions ──
+
 function parsePostParams_(e) {
   const params = e && e.parameter ? Object.assign({}, e.parameter) : {};
   const contents = e && e.postData && e.postData.contents ? e.postData.contents : '';
@@ -352,10 +406,9 @@ function apiResponse_(body, callback) {
 }
 
 function saveDaging_(sheetName, prefix, payload) {
-  initDatabase();
   const qty = normalizeDagingQty_(payload);
   const sheet = getSheet_(sheetName);
-  const id = `${prefix}-${nextId_(sheetName, 'ID Input', 4)}`;
+  const id = `${prefix}-${nextId_(sheet, 4)}`;
 
   sheet.appendRow([id, qty.kecil, qty.besar, qty.kepala, qty.kaki, qty.buntut, new Date()]);
   return { success: true, message: `Data ${sheetName.toLowerCase()} ${id} berhasil disimpan.` };
@@ -388,11 +441,15 @@ function readSheetAsObjects_(sheetName) {
   });
 }
 
-function getColumnIndex_(sheet, headerName) {
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const index = headers.indexOf(headerName);
-  if (index === -1) throw new Error(`Kolom ${headerName} tidak ditemukan di sheet ${sheet.getName()}.`);
-  return index + 1;
+// OPTIMIZED: Hanya baca baris terakhir dari kolom 1, bukan seluruh sheet
+function nextId_(sheet, width) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return String(1).padStart(width, '0');
+
+  const lastId = String(sheet.getRange(lastRow, 1).getValue());
+  const match = lastId.match(/(\d+)$/);
+  const number = match ? Number(match[1]) : 0;
+  return String(number + 1).padStart(width, '0');
 }
 
 function findRowByValue_(sheet, headerName, value) {
@@ -405,25 +462,11 @@ function findRowByValue_(sheet, headerName, value) {
   return index === -1 ? -1 : index + 2;
 }
 
-function getRowObject_(sheet, rowNumber) {
+function getColumnIndex_(sheet, headerName) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const values = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
-  return headers.reduce((obj, header, index) => {
-    obj[header] = values[index];
-    return obj;
-  }, {});
-}
-
-function nextId_(sheetName, idHeader, width, fallbackNumber) {
-  const rows = readSheetAsObjects_(sheetName);
-  const maxNumber = rows.reduce((max, row) => {
-    const raw = String(row[idHeader] || '');
-    const match = raw.match(/(\d+)$/);
-    const number = match ? Number(match[1]) : 0;
-    return Math.max(max, number);
-  }, 0);
-
-  return String(Math.max(maxNumber + 1, fallbackNumber || 1)).padStart(width, '0');
+  const index = headers.indexOf(headerName);
+  if (index === -1) throw new Error(`Kolom ${headerName} tidak ditemukan di sheet ${sheet.getName()}.`);
+  return index + 1;
 }
 
 function normalizePartQty_(payload) {
@@ -454,9 +497,10 @@ function positiveNumber_(value) {
   return number;
 }
 
+// OPTIMIZED: Cache Session.getScriptTimeZone() untuk menghindari panggilan berulang
 function serializeValue_(value) {
   if (Object.prototype.toString.call(value) === '[object Date]' && !Number.isNaN(value.getTime())) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    return Utilities.formatDate(value, getTimezone_(), 'yyyy-MM-dd HH:mm:ss');
   }
 
   return value;

@@ -433,23 +433,83 @@ function qurbanApp() {
         this.saving = false;
       }
     },
+    // ── Optimistic UI: Toggle status sembelihan ──
     toggleStatus(item) {
-      const nextStatus = item['Status Sembelihan'] === 'SELESAI' ? 'PENDING' : 'SELESAI';
-      this.runSave('updateStatusSembelihan', { id: item.ID, status: nextStatus });
+      const prevStatus = item['Status Sembelihan'];
+      const nextStatus = prevStatus === 'SELESAI' ? 'PENDING' : 'SELESAI';
+
+      // Optimistic: langsung ubah UI (Alpine reactive — kartu langsung berubah warna)
+      item['Status Sembelihan'] = nextStatus;
+
+      callApi('updateStatusSembelihan', { id: item.ID, status: nextStatus })
+        .then(() => {
+          this.toast = { type: 'success', message: `Status ${item.Deskripsi} diubah menjadi ${nextStatus}.` };
+        })
+        .catch((error) => {
+          // Rollback
+          item['Status Sembelihan'] = prevStatus;
+          this.toast = { type: 'error', message: error?.message || 'Gagal mengubah status. Coba lagi.' };
+        });
     },
     submitPengiriman() {
       this.runSave('createPengiriman', this.forms.pengiriman, () => {
         this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0 };
       });
     },
+    // ── Optimistic UI: Terima pengiriman ──
     terimaPengiriman(idPengiriman) {
-      this.runSave('receivePengiriman', { idPengiriman });
+      const index = this.pengirimanBelumDiterima.findIndex(
+        (item) => item['ID Pengiriman'] === idPengiriman
+      );
+      if (index === -1) return;
+
+      // Simpan backup untuk rollback
+      const backup = this.pengirimanBelumDiterima[index];
+
+      // Optimistic: langsung hapus dari list
+      this.pengirimanBelumDiterima.splice(index, 1);
+
+      callApi('receivePengiriman', { idPengiriman })
+        .then(() => {
+          this.toast = { type: 'success', message: `Pengiriman ${idPengiriman} berhasil diterima.` };
+        })
+        .catch((error) => {
+          // Rollback: kembalikan ke posisi semula
+          this.pengirimanBelumDiterima.splice(index, 0, backup);
+          this.toast = { type: 'error', message: error?.message || 'Gagal menerima pengiriman. Coba lagi.' };
+        });
     },
+    // ── Optimistic UI: Input daging masuk/keluar ──
     submitDaging(type) {
       const fn = type === 'masuk' ? 'inputDagingMasuk' : 'inputDagingKeluar';
-      this.runSave(fn, this.forms[type], () => {
-        this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 };
-      });
+      const formData = { ...this.forms[type] };
+      const dashKey = type === 'masuk' ? 'masuk' : 'keluar';
+
+      // Backup nilai dashboard saat ini
+      const prevDashboard = { ...this.dashboard[dashKey] };
+
+      // Optimistic: langsung update dashboard
+      this.dashboard[dashKey] = {
+        kecil:  Number(this.dashboard[dashKey].kecil  || 0) + Number(formData.kecil  || 0),
+        besar:  Number(this.dashboard[dashKey].besar  || 0) + Number(formData.besar  || 0),
+        kepala: Number(this.dashboard[dashKey].kepala || 0) + Number(formData.kepala || 0),
+        kaki:   Number(this.dashboard[dashKey].kaki   || 0) + Number(formData.kaki   || 0),
+        buntut: Number(this.dashboard[dashKey].buntut || 0) + Number(formData.buntut || 0),
+      };
+
+      // Reset form langsung
+      this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 };
+
+      callApi(fn, formData)
+        .then(() => {
+          this.toast = { type: 'success', message: `Data daging ${type} berhasil disimpan.` };
+        })
+        .catch((error) => {
+          // Rollback dashboard dan form
+          this.dashboard[dashKey] = prevDashboard;
+          this.forms[type] = formData;
+          this.toast = { type: 'error', message: error?.message || `Gagal menyimpan daging ${type}. Coba lagi.` };
+        });
     },
     async runSave(fnName, payload, afterSuccess) {
       this.saving = true;
