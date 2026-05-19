@@ -33,7 +33,7 @@
               </button>
               <img src="./assets/icons/icon-512.png" alt="" class="brand-logo">
               <div class="brand-copy">
-                <h2>LAPORAN PROGRES HEWAN KURBAN</h2>
+                <h1>LAPORAN PROGRES HEWAN KURBAN</h1>
                 <p>Pantau progres penyembelihan dan distribusi daging secara real-time</p>
               </div>
             </div>
@@ -341,7 +341,12 @@
         </section>
 
         <section x-show="tab === 'rph-pengiriman' && canAccess('rph-pengiriman')">
-          <form class="panel form-stack" @submit.prevent="submitPengiriman()">
+          <div class="section-tabs">
+            <button type="button" class="tab-button" :class="isPanelMode('pengiriman', 'form') ? 'tab-active' : ''" @click="setPanelMode('pengiriman', 'form')">Buat Pengiriman</button>
+            <button type="button" class="tab-button" :class="isPanelMode('pengiriman', 'history') ? 'tab-active' : ''" @click="setPanelMode('pengiriman', 'history')">Riwayat Pengiriman</button>
+          </div>
+
+          <form class="panel form-stack" @submit.prevent="submitPengiriman()" x-show="isPanelMode('pengiriman', 'form')">
             <h2 class="section-title">Pengiriman Daging</h2>
             <label class="field-label">Pilih Hewan Selesai</label>
             <select class="field" x-model="forms.pengiriman.idHewan" required>
@@ -354,7 +359,15 @@
               <template x-for="field in partFields" :key="field.key">
                 <label>
                   <span class="field-label" x-text="field.label"></span>
-                  <input class="field" type="number" min="0" x-model.number="forms.pengiriman[field.key]">
+                  <div class="number-stepper">
+                    <input class="field" type="number" min="0" x-model.number="forms.pengiriman[field.key]">
+                    <button type="button" class="step-button" @click="updateNumber('pengiriman', field.key, -1)" :disabled="forms.pengiriman[field.key] <= 0">
+                      <i data-lucide="minus"></i>
+                    </button>
+                    <button type="button" class="step-button" @click="updateNumber('pengiriman', field.key, 1)">
+                      <i data-lucide="plus"></i>
+                    </button>
+                  </div>
                 </label>
               </template>
             </div>
@@ -363,10 +376,29 @@
               <span x-text="saving ? 'Mengirim...' : 'Buat Pengiriman'"></span>
             </button>
           </form>
+
+          <div class="history-panel" x-show="isPanelMode('pengiriman', 'history')">
+            <h2 class="section-title">Riwayat Pengiriman</h2>
+            <template x-if="riwayatPengiriman.length">
+              <div class="history-list">
+                <template x-for="item in riwayatPengiriman" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
+                  <div class="history-item">
+                    <strong x-text="item['ID Pengiriman'] || item.id || 'Riwayat Pengiriman'"></strong>
+                    <span x-text="item.Deskripsi || item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <p x-show="!riwayatPengiriman.length" class="empty-text">Belum ada riwayat pengiriman.</p>
+          </div>
         </section>
 
         <section x-show="tab === 'pondok-penerimaan' && canAccess('pondok-penerimaan')">
-          <div class="panel">
+          <div class="section-tabs">
+            <button type="button" class="tab-button" :class="isPanelMode('penerimaan', 'pending') ? 'tab-active' : ''" @click="setPanelMode('penerimaan', 'pending')">Menunggu Terima</button>
+            <button type="button" class="tab-button" :class="isPanelMode('penerimaan', 'history') ? 'tab-active' : ''" @click="setPanelMode('penerimaan', 'history')">Riwayat Penerimaan</button>
+          </div>
+          <div class="panel" x-show="isPanelMode('penerimaan', 'pending')">
             <h2 class="section-title">Penerimaan Pengiriman</h2>
             <div class="table-wrap">
               <table class="data-table">
@@ -399,42 +431,108 @@
               </table>
             </div>
           </div>
+          <div class="history-panel" x-show="isPanelMode('penerimaan', 'history')">
+            <h2 class="section-title">Riwayat Penerimaan</h2>
+            <template x-if="riwayatPenerimaan.length">
+              <div class="history-list">
+                <template x-for="item in riwayatPenerimaan" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
+                  <div class="history-item">
+                    <strong x-text="item['ID Pengiriman'] || item.id || 'Penerimaan'"></strong>
+                    <span x-text="item.Deskripsi || item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <p x-show="!riwayatPenerimaan.length" class="empty-text">Belum ada riwayat penerimaan.</p>
+          </div>
         </section>
 
         <section x-show="tab === 'pondok-masuk' && canAccess('pondok-masuk')">
-            <form class="panel form-stack" @submit.prevent="submitDaging('masuk')">
-              <h2 class="section-title">Input Daging Masuk</h2>
-              <div class="field-grid-2">
-                <template x-for="field in dagingFields" :key="field.key">
-                  <label>
-                    <span class="field-label" x-text="field.label"></span>
+          <div class="section-tabs">
+            <button type="button" class="tab-button" :class="isPanelMode('masuk', 'input') ? 'tab-active' : ''" @click="setPanelMode('masuk', 'input')">Input Daging Masuk</button>
+            <button type="button" class="tab-button" :class="isPanelMode('masuk', 'history') ? 'tab-active' : ''" @click="setPanelMode('masuk', 'history')">Riwayat Masuk</button>
+          </div>
+          <form class="panel form-stack" @submit.prevent="submitDaging('masuk')" x-show="isPanelMode('masuk', 'input')">
+            <h2 class="section-title">Input Daging Masuk</h2>
+            <div class="field-grid-2">
+              <template x-for="field in dagingFields" :key="field.key">
+                <label>
+                  <span class="field-label" x-text="field.label"></span>
+                  <div class="number-stepper">
                     <input class="field" type="number" min="0" x-model.number="forms.masuk[field.key]">
-                  </label>
+                    <button type="button" class="step-button" @click="updateNumber('masuk', field.key, -1)" :disabled="forms.masuk[field.key] <= 0">
+                      <i data-lucide="minus"></i>
+                    </button>
+                    <button type="button" class="step-button" @click="updateNumber('masuk', field.key, 1)">
+                      <i data-lucide="plus"></i>
+                    </button>
+                  </div>
+                </label>
+              </template>
+            </div>
+            <button class="btn-primary" type="submit" :disabled="saving">
+              <span class="button-spinner" x-show="saving"></span>
+              <span x-text="saving ? 'Menyimpan...' : 'Simpan Masuk'"></span>
+            </button>
+          </form>
+          <div class="history-panel" x-show="isPanelMode('masuk', 'history')">
+            <h2 class="section-title">Riwayat Daging Masuk</h2>
+            <template x-if="riwayatMasuk.length">
+              <div class="history-list">
+                <template x-for="item in riwayatMasuk" :key="item.id || item.tanggal || item.keterangan">
+                  <div class="history-item">
+                    <strong x-text="item.tanggal || item.id || 'Riwayat Masuk'"></strong>
+                    <span x-text="item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+                  </div>
                 </template>
               </div>
-              <button class="btn-primary" type="submit" :disabled="saving">
-                <span class="button-spinner" x-show="saving"></span>
-                <span x-text="saving ? 'Menyimpan...' : 'Simpan Masuk'"></span>
-              </button>
-            </form>
+            </template>
+            <p x-show="!riwayatMasuk.length" class="empty-text">Belum ada riwayat daging masuk.</p>
+          </div>
         </section>
 
         <section x-show="tab === 'pondok-keluar' && canAccess('pondok-keluar')">
-            <form class="panel form-stack" @submit.prevent="submitDaging('keluar')">
-              <h2 class="section-title">Input Daging Keluar</h2>
-              <div class="field-grid-2">
-                <template x-for="field in dagingFields" :key="field.key">
-                  <label>
-                    <span class="field-label" x-text="field.label"></span>
+          <div class="section-tabs">
+            <button type="button" class="tab-button" :class="isPanelMode('keluar', 'input') ? 'tab-active' : ''" @click="setPanelMode('keluar', 'input')">Input Daging Keluar</button>
+            <button type="button" class="tab-button" :class="isPanelMode('keluar', 'history') ? 'tab-active' : ''" @click="setPanelMode('keluar', 'history')">Riwayat Keluar</button>
+          </div>
+          <form class="panel form-stack" @submit.prevent="submitDaging('keluar')" x-show="isPanelMode('keluar', 'input')">
+            <h2 class="section-title">Input Daging Keluar</h2>
+            <div class="field-grid-2">
+              <template x-for="field in dagingFields" :key="field.key">
+                <label>
+                  <span class="field-label" x-text="field.label"></span>
+                  <div class="number-stepper">
                     <input class="field" type="number" min="0" x-model.number="forms.keluar[field.key]">
-                  </label>
+                    <button type="button" class="step-button" @click="updateNumber('keluar', field.key, -1)" :disabled="forms.keluar[field.key] <= 0">
+                      <i data-lucide="minus"></i>
+                    </button>
+                    <button type="button" class="step-button" @click="updateNumber('keluar', field.key, 1)">
+                      <i data-lucide="plus"></i>
+                    </button>
+                  </div>
+                </label>
+              </template>
+            </div>
+            <button class="btn-primary" type="submit" :disabled="saving">
+              <span class="button-spinner" x-show="saving"></span>
+              <span x-text="saving ? 'Menyimpan...' : 'Simpan Keluar'"></span>
+            </button>
+          </form>
+          <div class="history-panel" x-show="isPanelMode('keluar', 'history')">
+            <h2 class="section-title">Riwayat Daging Keluar</h2>
+            <template x-if="riwayatKeluar.length">
+              <div class="history-list">
+                <template x-for="item in riwayatKeluar" :key="item.id || item.tanggal || item.keterangan">
+                  <div class="history-item">
+                    <strong x-text="item.tanggal || item.id || 'Riwayat Keluar'"></strong>
+                    <span x-text="item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+                  </div>
                 </template>
               </div>
-              <button class="btn-primary" type="submit" :disabled="saving">
-                <span class="button-spinner" x-show="saving"></span>
-                <span x-text="saving ? 'Menyimpan...' : 'Simpan Keluar'"></span>
-              </button>
-            </form>
+            </template>
+            <p x-show="!riwayatKeluar.length" class="empty-text">Belum ada riwayat daging keluar.</p>
+          </div>
         </section>
 
         <section x-show="tab === 'account' && canAccess('account')" class="account-page">
@@ -444,10 +542,20 @@
               <h2 x-text="currentUser ? currentUser.name : ''"></h2>
               <p x-text="currentUser ? currentUser.role : ''"></p>
             </div>
-            <button type="button" class="btn-primary" @click="logout()">
-              <i data-lucide="log-out"></i>
-              <span>Logout</span>
-            </button>
+            <div class="account-actions">
+              <button type="button" class="btn-primary" @click="logout()">
+                <i data-lucide="log-out"></i>
+                <span>Logout</span>
+              </button>
+              <div class="w-full mt-4 pt-4 border-t border-gray-200 text-center">
+                <p class="text-sm text-slate-500 mb-3">Bersihkan cache jika tampilan tidak sesuai setelah update aplikasi.</p>
+                <button type="button" class="btn-secondary" @click="clearAppCache()" :disabled="saving">
+                  <span class="button-spinner dark" x-show="saving"></span>
+                  <i data-lucide="trash-2" x-show="!saving"></i>
+                  <span x-text="saving ? 'Membersihkan...' : 'Bersihkan Cache'"></span>
+                </button>
+              </div>
+            </div>
           </article>
         </section>
         </div>

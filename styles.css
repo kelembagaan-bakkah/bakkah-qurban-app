@@ -63,6 +63,76 @@
   grid-template-columns: 1fr;
 }
 
+.section-tabs {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.history-panel {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.history-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.number-stepper {
+  display: flex;
+  gap: 0.45rem;
+  align-items: stretch;
+}
+
+.number-stepper .field {
+  margin: 0;
+  flex: 1;
+}
+
+.number-stepper .step-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  min-width: 42px;
+  width: 42px;
+  padding: 0;
+}
+
+.number-stepper .step-button i {
+  height: 18px;
+  width: 18px;
+}
+
+.number-stepper .step-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.number-stepper button:hover {
+  border-color: #0b4ca3;
+  color: #0b4ca3;
+}
+
+.number-stepper .field {
+  margin: 0;
+}
+
 /* ── PWA support ── */
 @media all and (display-mode: standalone) {
   body {
@@ -608,6 +678,15 @@ button, input, select, textarea {
   max-width: 420px;
   padding: 1.25rem;
   text-align: center;
+  width: 100%;
+}
+
+.account-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
   width: 100%;
 }
 

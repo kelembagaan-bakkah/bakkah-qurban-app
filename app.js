@@ -2,7 +2,7 @@ const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6q
 
 // ── API Cache ──
 const CACHE_KEY = 'qurbanApiCache';
-const CACHE_TTL = 30000; // 30 detik
+const CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
 function getCached() {
   try {
@@ -80,8 +80,18 @@ function qurbanApp() {
     toast: { type: 'success', message: '' },
     sembelihanFilter: 'semua',
     sembelihanQuery: '',
+    activePanel: {
+      pengiriman: 'form',
+      penerimaan: 'pending',
+      masuk: 'input',
+      keluar: 'input',
+    },
+    riwayatPengiriman: [],
+    riwayatMasuk: [],
+    riwayatKeluar: [],
+    riwayatPenerimaan: [],
     tabs: [
-      { key: 'dashboard', label: 'Beranda', mobileLabel: 'Home', icon: 'layout-dashboard', roles: ['Public', 'Admin', 'RPH', 'Developer'], bottomRoles: ['Admin', 'RPH'] },
+      { key: 'dashboard', label: 'Beranda', mobileLabel: 'Home', icon: 'layout-dashboard', roles: ['Public', 'Admin', 'RPH', 'Pondok', 'Developer'], bottomRoles: ['Admin', 'RPH', 'Pondok'] },
       { key: 'admin-hewan', label: 'Hewan', icon: 'badge-plus', roles: ['Admin', 'Developer'], bottomRoles: ['Admin'] },
       { key: 'admin-kupon', label: 'Kupon', icon: 'ticket', roles: ['Admin', 'Developer'], bottomRoles: ['Admin'] },
       { key: 'rph-sembelihan', label: 'Sembelihan', icon: 'list-checks', roles: ['RPH', 'Developer'], bottomRoles: ['RPH'] },
@@ -131,9 +141,17 @@ function qurbanApp() {
       this.updateClock();
       this.clockTimer = setInterval(() => this.updateClock(), 30000);
       this.startAutoRefresh();
-      this.refresh();
-      this.syncIcons();
       this.registerSW();
+
+      const cached = getCached();
+      if (cached) {
+        this.applyData(cached);
+        this.hasLoaded = true;
+        this.syncIcons();
+        this.silentRefreshData();
+      } else {
+        this.refresh();
+      }
     },
     autoRefreshTimer: null,
     startAutoRefresh() {
@@ -158,6 +176,15 @@ function qurbanApp() {
         this.hasLoaded = true;
       } catch (error) {
         // Silently ignore errors to keep UI smooth
+        console.warn('Silent refresh failed:', error);
+      }
+    },
+    async silentRefreshData() {
+      try {
+        const data = await callApi('getAppData');
+        setCached(data);
+        this.applyData(data);
+      } catch (error) {
         console.warn('Silent refresh failed:', error);
       }
     },
@@ -220,6 +247,19 @@ function qurbanApp() {
     canAccess(tabKey) {
       return this.visibleTabs().some((item) => item.key === tabKey);
     },
+    setPanelMode(section, mode) {
+      if (!this.activePanel) return;
+      this.activePanel[section] = mode;
+      this.syncIcons();
+    },
+    isPanelMode(section, mode) {
+      return this.activePanel && this.activePanel[section] === mode;
+    },
+    updateNumber(formKey, fieldKey, delta) {
+      const current = Number(this.forms[formKey]?.[fieldKey] || 0);
+      const next = Math.max(0, current + Number(delta));
+      this.forms[formKey][fieldKey] = next;
+    },
     setTab(tabKey) {
       if (!this.canAccess(tabKey)) {
         this.openLogin();
@@ -244,6 +284,33 @@ function qurbanApp() {
       this.toast = { type: 'success', message: 'Anda sudah logout.' };
       this.startAutoRefresh(); // Mulai silent refresh lagi untuk public
       this.syncIcons();
+    },
+    async clearAppCache() {
+      this.saving = true;
+      this.savingMessage = 'Membersihkan cache...';
+
+      try {
+        clearCache();
+
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }
+
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((reg) => reg.unregister()));
+        }
+
+        this.toast = {
+          type: 'success',
+          message: 'Cache berhasil dibersihkan. Segarkan halaman untuk memakai versi terbaru.',
+        };
+      } catch (error) {
+        this.toast = { type: 'error', message: error?.message || 'Gagal membersihkan cache.' };
+      } finally {
+        this.saving = false;
+      }
     },
     toggleMobileMenu() {
       this.mobileMenuOpen = !this.mobileMenuOpen;
@@ -312,6 +379,10 @@ function qurbanApp() {
       this.hewan = data.hewan || [];
       this.hewanSelesai = data.hewanSelesai || [];
       this.pengirimanBelumDiterima = data.pengirimanBelumDiterima || [];
+      this.riwayatPengiriman = data.riwayatPengiriman || [];
+      this.riwayatMasuk = data.riwayatMasuk || [];
+      this.riwayatKeluar = data.riwayatKeluar || [];
+      this.riwayatPenerimaan = data.riwayatPenerimaan || [];
       this.dashboard = data.dashboard || this.dashboard;
     },
     stockItems(stock) {
@@ -401,14 +472,42 @@ function qurbanApp() {
       });
     },
     submitHewan() {
-      this.runSave('registerHewan', this.forms.hewan, () => {
-        this.forms.hewan.qty = 1;
-      });
+      const formData = { ...this.forms.hewan };
+
+      // Optimistic: langsung reset form tanpa overlay
+      this.forms.hewan = { jenis: 'Sapi', qty: 1 };
+      this.toast = { type: 'success', message: `Mendaftarkan ${formData.qty} ${formData.jenis}...` };
+
+      callApi('registerHewan', formData)
+        .then((result) => {
+          this.toast = {
+            type: 'success',
+            message: result?.message || `${formData.qty} ${formData.jenis} berhasil didaftarkan.`,
+          };
+          this.silentRefreshData();
+        })
+        .catch((error) => {
+          this.forms.hewan = formData;
+          this.toast = { type: 'error', message: error?.message || 'Gagal mendaftarkan hewan. Coba lagi.' };
+        });
     },
     submitKupon() {
-      this.runSave('inputKupon', this.forms.kupon, () => {
-        this.forms.kupon.qty = 1;
-      });
+      const formData = { ...this.forms.kupon };
+
+      // Optimistic: langsung reset form
+      this.forms.kupon = { jenis: 'Besar', qty: 1 };
+
+      callApi('inputKupon', formData)
+        .then(() => {
+          this.toast = {
+            type: 'success',
+            message: `Kupon ${formData.jenis} sebanyak ${formData.qty} berhasil dicatat.`,
+          };
+        })
+        .catch((error) => {
+          this.forms.kupon = formData;
+          this.toast = { type: 'error', message: error?.message || 'Gagal menyimpan kupon. Coba lagi.' };
+        });
     },
     async submitLogin() {
       this.saving = true;
@@ -452,9 +551,26 @@ function qurbanApp() {
         });
     },
     submitPengiriman() {
-      this.runSave('createPengiriman', this.forms.pengiriman, () => {
-        this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0 };
-      });
+      const formData = { ...this.forms.pengiriman };
+
+      if (!formData.idHewan) {
+        this.toast = { type: 'error', message: 'Pilih hewan terlebih dahulu.' };
+        return;
+      }
+
+      // Optimistic: langsung reset form tanpa overlay
+      this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0 };
+      this.toast = { type: 'success', message: 'Mencatat pengiriman...' };
+
+      callApi('createPengiriman', formData)
+        .then((result) => {
+          this.toast = { type: 'success', message: result?.message || 'Pengiriman berhasil dibuat.' };
+          this.silentRefreshData();
+        })
+        .catch((error) => {
+          this.forms.pengiriman = formData;
+          this.toast = { type: 'error', message: error?.message || 'Gagal membuat pengiriman. Coba lagi.' };
+        });
     },
     // ── Optimistic UI: Terima pengiriman ──
     terimaPengiriman(idPengiriman) {

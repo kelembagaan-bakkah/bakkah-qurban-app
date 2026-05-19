@@ -1,7 +1,7 @@
 App Name : Qurban App
 
 Deployment url
-https://script.google.com/macros/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec
+https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec'
 
 Catatan arsitektur:
 - URL deployment di atas dipakai sebagai API penghubung frontend static ke Google Sheet.
