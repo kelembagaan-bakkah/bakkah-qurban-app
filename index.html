@@ -14,13 +14,16 @@
     <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
-    <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link rel="stylesheet" href="./styles.css?v=20260519-2">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900;950&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css?v=20260519-3">
   </head>
-  <body class="bg-stone-50 text-slate-900">
-    <main x-data="qurbanApp()" x-init="init()" class="min-h-screen" :aria-busy="loading || saving" x-cloak>
+  <body>
+    <main x-data="qurbanApp()" x-init="init()" :aria-busy="loading || saving" x-cloak>
       <header class="app-header">
         <div class="header-inner">
           <div class="header-left">
@@ -36,9 +39,9 @@
             </div>
           </div>
           <div class="header-actions">
-            <div class="hidden sm:block header-clock">
+            <div class="header-clock hide-mobile">
               <p x-text="dateLabel"></p>
-              <p class="text-blue-100" x-text="timeLabel"></p>
+              <p class="clock-sub" x-text="timeLabel"></p>
             </div>
             <button type="button" class="header-refresh" @click="refresh()" :disabled="loading">
               <span class="button-spinner" x-show="loading"></span>
@@ -108,7 +111,8 @@
         </aside>
 
         <div class="app-content">
-        <div x-show="toast.message" x-transition class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="toast.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'">
+
+        <div x-show="toast.message" x-transition class="toast" :class="toast.type === 'error' ? 'toast-error' : 'toast-success'">
           <span x-text="toast.message"></span>
         </div>
 
@@ -184,8 +188,8 @@
                 </div>
                 <div class="progress-summary">
                   <b>Total: <span x-text="group.items.length"></span></b>
-                  <b class="text-red-600">Disembelih: <span x-text="group.done"></span></b>
-                  <b :class="group.pending > 0 ? 'text-blue-900' : 'text-emerald-700'">Belum: <span x-text="group.pending"></span></b>
+                  <b class="c-red">Disembelih: <span x-text="group.done"></span></b>
+                  <b :class="group.pending > 0 ? 'c-blue-dark' : 'c-green'">Belum: <span x-text="group.pending"></span></b>
                 </div>
               </div>
               <div class="number-grid">
@@ -259,8 +263,9 @@
             </button>
           </form>
         </section>
-        <section x-show="tab === 'admin-hewan' && canAccess('admin-hewan')" class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+        <section x-show="tab === 'admin-hewan' && canAccess('admin-hewan')">
+          <div class="card-grid-4">
             <template x-for="item in animalTypeStats()" :key="item.jenis">
               <article class="mini-stat-card">
                 <span x-text="item.jenis"></span>
@@ -272,7 +277,7 @@
             </template>
           </div>
 
-          <form class="panel space-y-4" @submit.prevent="submitHewan()">
+          <form class="panel form-stack" @submit.prevent="submitHewan()">
             <h2 class="section-title">Registrasi Hewan</h2>
             <label class="field-label">Jenis Hewan</label>
             <select class="field" x-model="forms.hewan.jenis" required>
@@ -288,8 +293,8 @@
           </form>
         </section>
 
-        <section x-show="tab === 'admin-kupon' && canAccess('admin-kupon')" class="grid gap-4 lg:grid-cols-2">
-          <form class="panel space-y-4" @submit.prevent="submitKupon()">
+        <section x-show="tab === 'admin-kupon' && canAccess('admin-kupon')">
+          <form class="panel form-stack" @submit.prevent="submitKupon()">
             <h2 class="section-title">Input Kupon</h2>
             <label class="field-label">Jenis Kupon</label>
             <select class="field" x-model="forms.kupon.jenis" required>
@@ -305,26 +310,38 @@
           </form>
         </section>
 
-        <section x-show="tab === 'rph-sembelihan' && canAccess('rph-sembelihan')" class="space-y-5">
+        <section x-show="tab === 'rph-sembelihan' && canAccess('rph-sembelihan')">
           <div class="panel">
             <h2 class="section-title">Status Penyembelihan</h2>
+            <div class="sembelihan-toolbar">
+              <div class="sembelihan-tabs">
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'semua' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'semua'">Semua</button>
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Sapi' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Sapi'">Sapi</button>
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Kambing' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Kambing'">Kambing</button>
+              </div>
+              <div class="sembelihan-search">
+                <i data-lucide="search"></i>
+                <input class="field" type="text" placeholder="Cari ID atau deskripsi..." x-model="sembelihanQuery">
+              </div>
+            </div>
             <div class="animal-grid">
-              <template x-for="item in hewan" :key="item.ID">
+              <template x-for="item in filteredSembelihan" :key="item.ID">
                 <article class="animal-card" :class="item['Status Sembelihan'] === 'SELESAI' ? 'animal-done' : 'animal-pending'">
                   <strong x-text="item.Deskripsi"></strong>
                   <span x-text="item['Status Sembelihan']"></span>
-                  <button type="button" class="btn-secondary w-full" @click="toggleStatus(item)" :disabled="saving">
+                  <button type="button" class="btn-secondary" @click="toggleStatus(item)" :disabled="saving">
                     <span class="button-spinner dark" x-show="saving"></span>
                     <span x-text="saving ? 'Update...' : 'Toggle Status'"></span>
                   </button>
                 </article>
               </template>
+              <p x-show="!filteredSembelihan.length" class="empty-text">Tidak ada hewan yang cocok.</p>
             </div>
           </div>
         </section>
 
-        <section x-show="tab === 'rph-pengiriman' && canAccess('rph-pengiriman')" class="space-y-5">
-          <form class="panel space-y-4" @submit.prevent="submitPengiriman()">
+        <section x-show="tab === 'rph-pengiriman' && canAccess('rph-pengiriman')">
+          <form class="panel form-stack" @submit.prevent="submitPengiriman()">
             <h2 class="section-title">Pengiriman Daging</h2>
             <label class="field-label">Pilih Hewan Selesai</label>
             <select class="field" x-model="forms.pengiriman.idHewan" required>
@@ -333,9 +350,9 @@
                 <option :value="item.ID" x-text="`${item.ID} - ${item.Deskripsi}`"></option>
               </template>
             </select>
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="field-grid-4">
               <template x-for="field in partFields" :key="field.key">
-                <label class="block">
+                <label>
                   <span class="field-label" x-text="field.label"></span>
                   <input class="field" type="number" min="0" x-model.number="forms.pengiriman[field.key]">
                 </label>
@@ -348,7 +365,7 @@
           </form>
         </section>
 
-        <section x-show="tab === 'pondok-penerimaan' && canAccess('pondok-penerimaan')" class="space-y-5">
+        <section x-show="tab === 'pondok-penerimaan' && canAccess('pondok-penerimaan')">
           <div class="panel">
             <h2 class="section-title">Penerimaan Pengiriman</h2>
             <div class="table-wrap">
@@ -384,12 +401,12 @@
           </div>
         </section>
 
-        <section x-show="tab === 'pondok-masuk' && canAccess('pondok-masuk')" class="space-y-5">
-            <form class="panel space-y-4" @submit.prevent="submitDaging('masuk')">
+        <section x-show="tab === 'pondok-masuk' && canAccess('pondok-masuk')">
+            <form class="panel form-stack" @submit.prevent="submitDaging('masuk')">
               <h2 class="section-title">Input Daging Masuk</h2>
-              <div class="grid gap-3 sm:grid-cols-2">
+              <div class="field-grid-2">
                 <template x-for="field in dagingFields" :key="field.key">
-                  <label class="block">
+                  <label>
                     <span class="field-label" x-text="field.label"></span>
                     <input class="field" type="number" min="0" x-model.number="forms.masuk[field.key]">
                   </label>
@@ -402,12 +419,12 @@
             </form>
         </section>
 
-        <section x-show="tab === 'pondok-keluar' && canAccess('pondok-keluar')" class="space-y-5">
-            <form class="panel space-y-4" @submit.prevent="submitDaging('keluar')">
+        <section x-show="tab === 'pondok-keluar' && canAccess('pondok-keluar')">
+            <form class="panel form-stack" @submit.prevent="submitDaging('keluar')">
               <h2 class="section-title">Input Daging Keluar</h2>
-              <div class="grid gap-3 sm:grid-cols-2">
+              <div class="field-grid-2">
                 <template x-for="field in dagingFields" :key="field.key">
-                  <label class="block">
+                  <label>
                     <span class="field-label" x-text="field.label"></span>
                     <input class="field" type="number" min="0" x-model.number="forms.keluar[field.key]">
                   </label>

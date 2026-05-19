@@ -2,7 +2,68 @@
   display: none !important;
 }
 
-/* PWA support */
+/* ── Utility classes (menggantikan Tailwind) ── */
+
+.hide-mobile {
+  display: block;
+}
+
+.c-red {
+  color: #dc2626;
+}
+
+.c-blue-dark {
+  color: #1e3a5f;
+}
+
+.c-green {
+  color: #047337;
+}
+
+.toast {
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 1px solid;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.toast-success {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.toast-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.form-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.card-grid-4 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.field-grid-2 {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+.field-grid-4 {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+/* ── PWA support ── */
 @media all and (display-mode: standalone) {
   body {
     overscroll-behavior-y: contain;
@@ -19,9 +80,14 @@
 }
 
 body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background:
     radial-gradient(circle at 12% 0%, rgba(34, 197, 94, 0.08), transparent 28rem),
     linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
 }
 
 .header-inner {
@@ -1054,6 +1120,64 @@ body {
   margin-bottom: 1rem;
 }
 
+/* ── Sembelihan toolbar ── */
+.sembelihan-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.sembelihan-tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.filter-tab {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-tab:hover {
+  background: #f1f5f9;
+}
+
+.filter-tab-active {
+  background: #0b4ca3;
+  border-color: #0b4ca3;
+  color: #ffffff;
+}
+
+.sembelihan-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 160px;
+}
+
+.sembelihan-search svg {
+  flex: 0 0 auto;
+  height: 18px;
+  width: 18px;
+  color: #94a3b8;
+}
+
+.sembelihan-search .field {
+  min-height: 38px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.85rem;
+}
+
 .stat-card {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -1240,6 +1364,18 @@ body {
   .summary-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .card-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .field-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .field-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (min-width: 1024px) {
@@ -1302,6 +1438,10 @@ body {
 @media (max-width: 520px) {
   .header-inner {
     padding: 0.85rem 0.75rem;
+  }
+
+  .hide-mobile {
+    display: none !important;
   }
 
   .header-brand {

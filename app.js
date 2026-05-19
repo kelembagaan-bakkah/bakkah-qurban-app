@@ -1,5 +1,32 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 
+// ── API Cache ──
+const CACHE_KEY = 'qurbanApiCache';
+const CACHE_TTL = 30000; // 30 detik
+
+function getCached() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (Date.now() - cached.ts >= CACHE_TTL) return null;
+    return cached.data;
+  } catch { return null; }
+}
+
+function setCached(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+function clearCache() {
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
+}
+
+// ── API Throttle ──
+let refreshInFlight = false;
+
 function callApi(action, payload = {}) {
   return new Promise((resolve, reject) => {
     const callbackName = `qurbanApiCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -51,6 +78,8 @@ function qurbanApp() {
     timeLabel: '',
     clockTimer: null,
     toast: { type: 'success', message: '' },
+    sembelihanFilter: 'semua',
+    sembelihanQuery: '',
     tabs: [
       { key: 'dashboard', label: 'Beranda', mobileLabel: 'Home', icon: 'layout-dashboard', roles: ['Public', 'Admin', 'RPH', 'Developer'], bottomRoles: ['Admin', 'RPH'] },
       { key: 'admin-hewan', label: 'Hewan', icon: 'badge-plus', roles: ['Admin', 'Developer'], bottomRoles: ['Admin'] },
@@ -245,21 +274,37 @@ function qurbanApp() {
       }).format(now)}`;
     },
     async refresh() {
-      this.loading = true;
+      // Throttle: skip if already loading, but allow after timeout
+      if (this._refreshPending) return;
+      this._refreshPending = true;
+
+      // Show cached data immediately (no loading screen)
+      const cached = getCached();
+      if (cached && !this.hasLoaded) {
+        this.applyData(cached);
+        this.hasLoaded = true;
+        this.syncIcons();
+      }
+
+      this.loading = !this.hasLoaded;
       this.loadingMessage = this.hasLoaded ? 'Memperbarui data...' : 'Memuat data...';
 
       try {
         const data = await callApi('getAppData');
+        setCached(data);
         this.applyData(data);
         this.hasLoaded = true;
         if (this.tab !== 'login' && !this.canAccess(this.tab)) {
           this.tab = this.isLoggedIn() ? this.defaultTabForRole(this.currentUser.role) : 'dashboard';
         }
       } catch (error) {
-        this.hasLoaded = true;
-        this.fail(error);
+        if (!this.hasLoaded) {
+          this.hasLoaded = true;
+          this.fail(error);
+        }
       } finally {
         this.loading = false;
+        this._refreshPending = false;
         this.syncIcons();
       }
     },
@@ -340,6 +385,20 @@ function qurbanApp() {
       const total = Number(this.dashboard.totalHewan || 0);
       if (!total) return '0%';
       return `${((Number(value || 0) / total) * 100).toFixed(1).replace('.', ',')}%`;
+    },
+    get filteredSembelihan() {
+      const query = (this.sembelihanQuery || '').toLowerCase().trim();
+      return this.hewan.filter((item) => {
+        // Filter by jenis
+        if (this.sembelihanFilter !== 'semua' && item.Jenis !== this.sembelihanFilter) return false;
+        // Search by ID or description
+        if (query) {
+          const desc = (item.Deskripsi || '').toLowerCase();
+          const id = String(item.ID || '');
+          if (!desc.includes(query) && !id.includes(query)) return false;
+        }
+        return true;
+      });
     },
     submitHewan() {
       this.runSave('registerHewan', this.forms.hewan, () => {
