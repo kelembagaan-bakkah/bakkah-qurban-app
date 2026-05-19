@@ -116,6 +116,17 @@
           <span x-text="toast.message"></span>
         </div>
 
+        <div x-show="successModal.show" x-transition.opacity class="busy-overlay" @click.away="closeSuccessModal()" style="pointer-events:auto;">
+          <div class="busy-card" style="max-width:380px; width:100%; text-align:center; padding: 1.5rem;">
+            <div style="margin-bottom:1rem; display:flex; justify-content:center;">
+              <i data-lucide="check-circle" style="width:48px; height:48px; color:#0b4ca3;"></i>
+            </div>
+            <strong x-text="successModal.title" style="display:block; margin-bottom:0.75rem; font-size:1.1rem;"></strong>
+            <span x-text="successModal.message" style="display:block; margin-bottom:1.25rem; color:#334155;"></span>
+            <button type="button" class="btn-secondary" @click="closeSuccessModal()">Tutup</button>
+          </div>
+        </div>
+
         <section x-show="tab === 'dashboard'" class="dashboard-shell">
           <div x-show="loading && !hasLoaded" class="dashboard-skeleton">
             <div class="skeleton-card"></div>
@@ -133,7 +144,10 @@
               <div>
                 <span>DAGING TERSEDIA</span>
                 <strong x-text="formatNumber(availablePackages())"></strong>
-                <p>Bungkus</p>
+                <p>
+                  Besar <b x-text="formatNumber(availablePackageBreakdown().besar)"></b>
+                  · Kecil <b x-text="formatNumber(availablePackageBreakdown().kecil)"></b>
+                </p>
                 <small>Siap untuk didistribusikan</small>
               </div>
             </article>
@@ -142,7 +156,10 @@
               <div>
                 <span>DAGING MASUK</span>
                 <strong x-text="formatNumber(packageTotal(dashboard.masuk))"></strong>
-                <p>Bungkus</p>
+                <p>
+                  Besar <b x-text="formatNumber(packageBreakdown(dashboard.masuk).besar)"></b>
+                  · Kecil <b x-text="formatNumber(packageBreakdown(dashboard.masuk).kecil)"></b>
+                </p>
                 <small>Total daging dari hewan</small>
               </div>
             </article>
@@ -151,7 +168,10 @@
               <div>
                 <span>DAGING KELUAR</span>
                 <strong x-text="formatNumber(packageTotal(dashboard.keluar))"></strong>
-                <p>Bungkus</p>
+                <p>
+                  Besar <b x-text="formatNumber(packageBreakdown(dashboard.keluar).besar)"></b>
+                  · Kecil <b x-text="formatNumber(packageBreakdown(dashboard.keluar).kecil)"></b>
+                </p>
                 <small>Total daging yang didistribusikan</small>
               </div>
             </article>
@@ -286,14 +306,28 @@
             </select>
             <label class="field-label">Qty</label>
             <input class="field" type="number" min="1" x-model.number="forms.hewan.qty" required>
-            <button class="btn-primary" type="submit" :disabled="saving">
-              <span class="button-spinner" x-show="saving"></span>
-              <span x-text="saving ? 'Menyimpan...' : 'Simpan Hewan'"></span>
+            <button class="btn-primary" type="submit" :disabled="forms.hewan._submitting">
+              <span class="button-spinner" x-show="forms.hewan._submitting"></span>
+              <i data-lucide="badge-plus" x-show="!forms.hewan._submitting"></i>
+              <span x-text="forms.hewan._submitting ? 'Mengirim Data...' : 'Daftarkan Hewan'"></span>
             </button>
           </form>
         </section>
 
         <section x-show="tab === 'admin-kupon' && canAccess('admin-kupon')">
+          <div class="card-grid-4" style="margin-bottom:1.5rem;">
+            <article class="mini-stat-card">
+              <span>Kupon Besar</span>
+              <strong x-text="kuponCount('Besar')"></strong>
+              <small>Total kupon besar yang tercatat</small>
+            </article>
+            <article class="mini-stat-card">
+              <span>Kupon Kecil</span>
+              <strong x-text="kuponCount('Kecil')"></strong>
+              <small>Total kupon kecil yang tercatat</small>
+            </article>
+          </div>
+
           <form class="panel form-stack" @submit.prevent="submitKupon()">
             <h2 class="section-title">Input Kupon</h2>
             <label class="field-label">Jenis Kupon</label>
@@ -303,9 +337,10 @@
             </select>
             <label class="field-label">Qty</label>
             <input class="field" type="number" min="1" x-model.number="forms.kupon.qty" required>
-            <button class="btn-primary" type="submit" :disabled="saving">
-              <span class="button-spinner" x-show="saving"></span>
-              <span x-text="saving ? 'Menyimpan...' : 'Simpan Kupon'"></span>
+            <button class="btn-primary" type="submit" :disabled="forms.kupon._submitting">
+              <span class="button-spinner" x-show="forms.kupon._submitting"></span>
+              <i data-lucide="ticket" x-show="!forms.kupon._submitting"></i>
+              <span x-text="forms.kupon._submitting ? 'Mengirim Data...' : 'Simpan Kupon'"></span>
             </button>
           </form>
         </section>
@@ -371,9 +406,10 @@
                 </label>
               </template>
             </div>
-            <button class="btn-primary" type="submit" :disabled="saving">
-              <span class="button-spinner" x-show="saving"></span>
-              <span x-text="saving ? 'Mengirim...' : 'Buat Pengiriman'"></span>
+            <button class="btn-primary" type="submit" :disabled="forms.pengiriman._submitting">
+              <span class="button-spinner" x-show="forms.pengiriman._submitting"></span>
+              <i data-lucide="truck" x-show="!forms.pengiriman._submitting"></i>
+              <span x-text="forms.pengiriman._submitting ? 'Mengirim Data...' : 'Buat Pengiriman'"></span>
             </button>
           </form>
 
@@ -470,9 +506,10 @@
                 </label>
               </template>
             </div>
-            <button class="btn-primary" type="submit" :disabled="saving">
-              <span class="button-spinner" x-show="saving"></span>
-              <span x-text="saving ? 'Menyimpan...' : 'Simpan Masuk'"></span>
+            <button class="btn-primary" type="submit" :disabled="forms.masuk._submitting">
+              <span class="button-spinner" x-show="forms.masuk._submitting"></span>
+              <i data-lucide="archive-restore" x-show="!forms.masuk._submitting"></i>
+              <span x-text="forms.masuk._submitting ? 'Mengirim Data...' : 'Simpan Daging Masuk'"></span>
             </button>
           </form>
           <div class="history-panel" x-show="isPanelMode('masuk', 'history')">
@@ -514,9 +551,10 @@
                 </label>
               </template>
             </div>
-            <button class="btn-primary" type="submit" :disabled="saving">
-              <span class="button-spinner" x-show="saving"></span>
-              <span x-text="saving ? 'Menyimpan...' : 'Simpan Keluar'"></span>
+            <button class="btn-primary" type="submit" :disabled="forms.keluar._submitting">
+              <span class="button-spinner" x-show="forms.keluar._submitting"></span>
+              <i data-lucide="archive-x" x-show="!forms.keluar._submitting"></i>
+              <span x-text="forms.keluar._submitting ? 'Mengirim Data...' : 'Simpan Daging Keluar'"></span>
             </button>
           </form>
           <div class="history-panel" x-show="isPanelMode('keluar', 'history')">

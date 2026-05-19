@@ -158,9 +158,10 @@ function registerHewan(payload) {
   const startNumber = existingData.filter((item) => item.Jenis === jenis).length + 1;
   const rows = [];
   const width = 4;
+  const nextIdStart = Number(nextId_(sheet, width)) || 1;
 
   for (let i = 0; i < qty; i += 1) {
-    const id = nextId_(sheet, width);
+    const id = String(nextIdStart + i).padStart(width, '0');
     const number = startNumber + i;
     rows.push([id, `${jenis} ${number}`, jenis, 'PENDING', 'RPH', now, now]);
   }

@@ -78,6 +78,8 @@ function qurbanApp() {
     timeLabel: '',
     clockTimer: null,
     toast: { type: 'success', message: '' },
+    successModal: { show: false, title: '', message: '' },
+    successModalTimer: null,
     sembelihanFilter: 'semua',
     sembelihanQuery: '',
     activePanel: {
@@ -118,6 +120,7 @@ function qurbanApp() {
       { key: 'buntut', label: 'Buntut' },
     ],
     hewan: [],
+    kupon: [],
     hewanSelesai: [],
     pengirimanBelumDiterima: [],
     dashboard: {
@@ -129,11 +132,11 @@ function qurbanApp() {
       keluar: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 },
     },
     forms: {
-      hewan: { jenis: 'Sapi', qty: 1 },
-      kupon: { jenis: 'Besar', qty: 1 },
-      pengiriman: { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0 },
-      masuk: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 },
-      keluar: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 },
+      hewan: { jenis: 'Sapi', qty: 1, _submitting: false },
+      kupon: { jenis: 'Besar', qty: 1, _submitting: false },
+      pengiriman: { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, _submitting: false },
+      masuk: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false },
+      keluar: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false },
       login: { username: '', password: '', remember: true },
     },
     init() {
@@ -377,6 +380,7 @@ function qurbanApp() {
     },
     applyData(data) {
       this.hewan = data.hewan || [];
+      this.kupon = data.kupon || [];
       this.hewanSelesai = data.hewanSelesai || [];
       this.pengirimanBelumDiterima = data.pengirimanBelumDiterima || [];
       this.riwayatPengiriman = data.riwayatPengiriman || [];
@@ -400,8 +404,25 @@ function qurbanApp() {
     packageTotal(stock) {
       return Number(stock.kecil || 0) + Number(stock.besar || 0);
     },
+    packageBreakdown(stock) {
+      return {
+        besar: Number(stock.besar || 0),
+        kecil: Number(stock.kecil || 0),
+      };
+    },
+    availablePackageBreakdown() {
+      return {
+        besar: Number(this.dashboard.masuk.besar || 0) - Number(this.dashboard.keluar.besar || 0),
+        kecil: Number(this.dashboard.masuk.kecil || 0) - Number(this.dashboard.keluar.kecil || 0),
+      };
+    },
+    kuponCount(jenis) {
+      return this.kupon
+        .filter((item) => String(item['Jenis Kupon'] || item.Jenis || '').toLowerCase() === String(jenis).toLowerCase())
+        .reduce((sum, item) => sum + Number(item.Qty || item.qty || 0), 0);
+    },
     availablePackages() {
-      return Math.max(this.packageTotal(this.dashboard.masuk) - this.packageTotal(this.dashboard.keluar), 0);
+      return this.packageTotal(this.dashboard.masuk) - this.packageTotal(this.dashboard.keluar);
     },
     partTotal(key) {
       return Math.max(Number(this.dashboard.masuk[key] || 0) - Number(this.dashboard.keluar[key] || 0), 0);
@@ -472,40 +493,41 @@ function qurbanApp() {
       });
     },
     submitHewan() {
-      const formData = { ...this.forms.hewan };
+      if (this.forms.hewan._submitting) return;
+      const formData = { jenis: this.forms.hewan.jenis, qty: this.forms.hewan.qty };
 
-      // Optimistic: langsung reset form tanpa overlay
-      this.forms.hewan = { jenis: 'Sapi', qty: 1 };
-      this.toast = { type: 'success', message: `Mendaftarkan ${formData.qty} ${formData.jenis}...` };
+      this.forms.hewan._submitting = true;
 
       callApi('registerHewan', formData)
         .then((result) => {
-          this.toast = {
-            type: 'success',
-            message: result?.message || `${formData.qty} ${formData.jenis} berhasil didaftarkan.`,
-          };
+          this.forms.hewan = { jenis: 'Sapi', qty: 1, _submitting: false };
+          this.showSuccessModal(
+            'Hewan Berhasil Disimpan',
+            result?.message || `${formData.qty} ${formData.jenis} berhasil didaftarkan ke sistem.`
+          );
           this.silentRefreshData();
         })
         .catch((error) => {
-          this.forms.hewan = formData;
+          this.forms.hewan = { ...formData, _submitting: false };
           this.toast = { type: 'error', message: error?.message || 'Gagal mendaftarkan hewan. Coba lagi.' };
         });
     },
     submitKupon() {
-      const formData = { ...this.forms.kupon };
+      if (this.forms.kupon._submitting) return;
+      const formData = { jenis: this.forms.kupon.jenis, qty: this.forms.kupon.qty };
 
-      // Optimistic: langsung reset form
-      this.forms.kupon = { jenis: 'Besar', qty: 1 };
+      this.forms.kupon._submitting = true;
 
       callApi('inputKupon', formData)
         .then(() => {
-          this.toast = {
-            type: 'success',
-            message: `Kupon ${formData.jenis} sebanyak ${formData.qty} berhasil dicatat.`,
-          };
+          this.forms.kupon = { jenis: 'Besar', qty: 1, _submitting: false };
+          this.showSuccessModal(
+            'Kupon Berhasil Disimpan',
+            `${formData.qty} kupon ${formData.jenis} berhasil dicatat.`
+          );
         })
         .catch((error) => {
-          this.forms.kupon = formData;
+          this.forms.kupon = { ...formData, _submitting: false };
           this.toast = { type: 'error', message: error?.message || 'Gagal menyimpan kupon. Coba lagi.' };
         });
     },
@@ -551,24 +573,38 @@ function qurbanApp() {
         });
     },
     submitPengiriman() {
-      const formData = { ...this.forms.pengiriman };
-
-      if (!formData.idHewan) {
+      if (this.forms.pengiriman._submitting) return;
+      if (!this.forms.pengiriman.idHewan) {
         this.toast = { type: 'error', message: 'Pilih hewan terlebih dahulu.' };
         return;
       }
 
-      // Optimistic: langsung reset form tanpa overlay
-      this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0 };
+      const formData = {
+        idHewan: this.forms.pengiriman.idHewan,
+        kepala: this.forms.pengiriman.kepala,
+        kaki: this.forms.pengiriman.kaki,
+        paha: this.forms.pengiriman.paha,
+        hati: this.forms.pengiriman.hati,
+        jantung: this.forms.pengiriman.jantung,
+        buntut: this.forms.pengiriman.buntut,
+        badan: this.forms.pengiriman.badan,
+      };
+
+      this.forms.pengiriman._submitting = true;
+      this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, _submitting: true };
       this.toast = { type: 'success', message: 'Mencatat pengiriman...' };
 
       callApi('createPengiriman', formData)
         .then((result) => {
-          this.toast = { type: 'success', message: result?.message || 'Pengiriman berhasil dibuat.' };
+          this.forms.pengiriman._submitting = false;
+          this.toast = {
+            type: 'success',
+            message: result?.message || `Pengiriman untuk ${formData.idHewan} berhasil dibuat dan sedang dikirim ke Pondok.`,
+          };
           this.silentRefreshData();
         })
         .catch((error) => {
-          this.forms.pengiriman = formData;
+          this.forms.pengiriman = { ...formData, _submitting: false };
           this.toast = { type: 'error', message: error?.message || 'Gagal membuat pengiriman. Coba lagi.' };
         });
     },
@@ -597,14 +633,14 @@ function qurbanApp() {
     },
     // ── Optimistic UI: Input daging masuk/keluar ──
     submitDaging(type) {
+      if (this.forms[type]._submitting) return;
       const fn = type === 'masuk' ? 'inputDagingMasuk' : 'inputDagingKeluar';
       const formData = { ...this.forms[type] };
       const dashKey = type === 'masuk' ? 'masuk' : 'keluar';
 
-      // Backup nilai dashboard saat ini
+      this.forms[type]._submitting = true;
       const prevDashboard = { ...this.dashboard[dashKey] };
 
-      // Optimistic: langsung update dashboard
       this.dashboard[dashKey] = {
         kecil:  Number(this.dashboard[dashKey].kecil  || 0) + Number(formData.kecil  || 0),
         besar:  Number(this.dashboard[dashKey].besar  || 0) + Number(formData.besar  || 0),
@@ -613,17 +649,20 @@ function qurbanApp() {
         buntut: Number(this.dashboard[dashKey].buntut || 0) + Number(formData.buntut || 0),
       };
 
-      // Reset form langsung
-      this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0 };
+      this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: true };
 
       callApi(fn, formData)
         .then(() => {
-          this.toast = { type: 'success', message: `Data daging ${type} berhasil disimpan.` };
+          this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false };
+          const totalBungkus = Number(formData.kecil || 0) + Number(formData.besar || 0);
+          this.showSuccessModal(
+            `Daging ${type === 'masuk' ? 'Masuk' : 'Keluar'} Berhasil`,
+            `Data daging ${type} berhasil dicatat. ${totalBungkus > 0 ? `Total ${totalBungkus} bungkus.` : ''}`.trim()
+          );
         })
         .catch((error) => {
-          // Rollback dashboard dan form
           this.dashboard[dashKey] = prevDashboard;
-          this.forms[type] = formData;
+          this.forms[type] = { ...formData, _submitting: false };
           this.toast = { type: 'error', message: error?.message || `Gagal menyimpan daging ${type}. Coba lagi.` };
         });
     },
@@ -646,6 +685,24 @@ function qurbanApp() {
       this.loading = false;
       this.saving = false;
       this.toast = { type: 'error', message: error && error.message ? error.message : 'Terjadi kesalahan.' };
+    },
+    showSuccessModal(title, message) {
+      if (this.successModalTimer) {
+        clearTimeout(this.successModalTimer);
+        this.successModalTimer = null;
+      }
+      this.successModal = { show: true, title, message };
+      this.successModalTimer = setTimeout(() => {
+        this.successModal.show = false;
+        this.successModalTimer = null;
+      }, 2400);
+    },
+    closeSuccessModal() {
+      if (this.successModalTimer) {
+        clearTimeout(this.successModalTimer);
+        this.successModalTimer = null;
+      }
+      this.successModal.show = false;
     },
     saveMessageFor(fnName) {
       const messages = {
