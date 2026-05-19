@@ -2,8 +2,18 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bakkah Qurban App</title>
+    <meta name="theme-color" content="#0b2f66">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Qurban App">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Qurban App">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -12,22 +22,24 @@
   <body class="bg-stone-50 text-slate-900">
     <main x-data="qurbanApp()" x-init="init()" class="min-h-screen" :aria-busy="loading || saving" x-cloak>
       <header class="app-header">
-        <div class="flex w-full items-center justify-between gap-4 px-4 py-4">
-          <div class="header-brand" :class="isLoggedIn() ? 'with-menu' : ''">
-            <button x-show="isLoggedIn()" type="button" class="menu-toggle" @click="toggleMobileMenu()" aria-label="Buka menu">
-              <i data-lucide="menu"></i>
-            </button>
-            <div class="brand-mark">Q</div>
-            <div class="brand-copy">
-              <h1>LAPORAN PROGRES HEWAN KURBAN</h1>
-              <p>Pantau progres penyembelihan dan distribusi daging secara real-time</p>
+        <div class="header-inner">
+          <div class="header-left">
+            <div class="header-brand" :class="isLoggedIn() ? 'with-menu' : ''">
+              <button x-show="isLoggedIn()" type="button" class="menu-toggle" @click="toggleMobileMenu()" aria-label="Buka menu">
+                <i data-lucide="menu"></i>
+              </button>
+              <img src="./assets/icons/icon-512.png" alt="" class="brand-logo">
+              <div class="brand-copy">
+                <h1>LAPORAN PROGRES HEWAN KURBAN</h1>
+                <p>Pantau progres penyembelihan dan distribusi daging secara real-time</p>
+              </div>
             </div>
           </div>
-          <div class="hidden text-right font-bold sm:block">
-            <p x-text="dateLabel"></p>
-            <p class="text-blue-100" x-text="timeLabel"></p>
-          </div>
           <div class="header-actions">
+            <div class="hidden sm:block header-clock">
+              <p x-text="dateLabel"></p>
+              <p class="text-blue-100" x-text="timeLabel"></p>
+            </div>
             <button type="button" class="header-refresh" @click="refresh()" :disabled="loading">
               <span class="button-spinner" x-show="loading"></span>
               <i data-lucide="refresh-cw" x-show="!loading"></i>
@@ -160,7 +172,7 @@
             <article class="progress-panel">
               <div class="progress-head">
                 <div class="progress-title">
-                  <div class="animal-symbol" :class="group.jenis === 'Sapi' ? 'symbol-blue' : 'symbol-green'" x-text="group.jenis === 'Sapi' ? 'S' : 'K'"></div>
+                  <img :src="'./assets/ic-' + (group.jenis === 'Sapi' ? 'sapi' : 'kambing') + '.png'" alt="" class="animal-symbol-img">
                   <h2>
                     <span x-text="group.jenis.toUpperCase()"></span>
                     <small x-text="animalRangeText(group)"></small>
@@ -197,24 +209,30 @@
 
             <article class="summary-panel">
               <h2>RINGKASAN KESELURUHAN</h2>
-              <div class="summary-grid">
-                <div>
-                  <span>Total Hewan</span>
-                  <strong x-text="dashboard.totalHewan"></strong>
+              <div class="summary-stats">
+                <div class="summary-stat total">
+                  <span class="stat-label">Total Hewan</span>
+                  <strong class="stat-value" x-text="dashboard.totalHewan"></strong>
                 </div>
-                <div>
-                  <span>Total Disembelih</span>
-                  <strong class="text-red-600">
+                <div class="summary-stat">
+                  <span class="stat-label">Disembelih</span>
+                  <strong class="stat-value stat-done">
                     <span x-text="dashboard.totalSelesai"></span>
-                    (<span x-text="dashboardPercent(dashboard.totalSelesai)"></span>)
+                    <span class="stat-pct" x-text="dashboardPercent(dashboard.totalSelesai)"></span>
                   </strong>
+                  <div class="stat-bar">
+                    <div class="stat-bar-fill bar-done" :style="'width:' + rawPercent(dashboard.totalSelesai) + '%'"></div>
+                  </div>
                 </div>
-                <div>
-                  <span>Total Belum Disembelih</span>
-                  <strong class="text-blue-950">
+                <div class="summary-stat">
+                  <span class="stat-label">Belum Disembelih</span>
+                  <strong class="stat-value stat-pending">
                     <span x-text="dashboard.totalPending"></span>
-                    (<span x-text="dashboardPercent(dashboard.totalPending)"></span>)
+                    <span class="stat-pct" x-text="dashboardPercent(dashboard.totalPending)"></span>
                   </strong>
+                  <div class="stat-bar">
+                    <div class="stat-bar-fill bar-pending" :style="'width:' + rawPercent(dashboard.totalPending) + '%'"></div>
+                  </div>
                 </div>
               </div>
             </article>

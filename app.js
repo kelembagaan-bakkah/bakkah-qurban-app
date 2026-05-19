@@ -101,8 +101,60 @@ function qurbanApp() {
       this.currentUser = this.loadSession();
       this.updateClock();
       this.clockTimer = setInterval(() => this.updateClock(), 30000);
+      this.startAutoRefresh();
       this.refresh();
       this.syncIcons();
+      this.registerSW();
+    },
+    autoRefreshTimer: null,
+    startAutoRefresh() {
+      this.stopAutoRefresh();
+      // Auto-refresh every 60 seconds, only for public (non-logged-in) users
+      if (!this.isLoggedIn()) {
+        this.autoRefreshTimer = setInterval(() => {
+          this.silentRefresh();
+        }, 60000);
+      }
+    },
+    stopAutoRefresh() {
+      if (this.autoRefreshTimer) {
+        clearInterval(this.autoRefreshTimer);
+        this.autoRefreshTimer = null;
+      }
+    },
+    async silentRefresh() {
+      try {
+        const data = await callApi('getAppData');
+        this.applyData(data);
+        this.hasLoaded = true;
+      } catch (error) {
+        // Silently ignore errors to keep UI smooth
+        console.warn('Silent refresh failed:', error);
+      }
+    },
+    registerSW() {
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (reg) => {
+              console.log('SW registered:', reg.scope);
+              reg.addEventListener('updatefound', () => {
+                const installing = reg.installing;
+                if (installing) {
+                  installing.addEventListener('statechange', () => {
+                    if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                      this.toast = { type: 'success', message: 'Aplikasi siap digunakan offline.' };
+                    }
+                  });
+                }
+              });
+            },
+            (err) => {
+              console.warn('SW registration failed:', err);
+            }
+          );
+        });
+      }
     },
     syncIcons() {
       setTimeout(() => {
@@ -161,6 +213,7 @@ function qurbanApp() {
       this.tab = 'dashboard';
       this.mobileMenuOpen = false;
       this.toast = { type: 'success', message: 'Anda sudah logout.' };
+      this.startAutoRefresh(); // Mulai silent refresh lagi untuk public
       this.syncIcons();
     },
     toggleMobileMenu() {
@@ -278,6 +331,11 @@ function qurbanApp() {
       if (!numbers.length) return `(${group.items.length})`;
       return `(1 - ${Math.max(...numbers)})`;
     },
+    rawPercent(value) {
+      const total = Number(this.dashboard.totalHewan || 0);
+      if (!total) return 0;
+      return Math.round((Number(value || 0) / total) * 100);
+    },
     dashboardPercent(value) {
       const total = Number(this.dashboard.totalHewan || 0);
       if (!total) return '0%';
@@ -300,6 +358,7 @@ function qurbanApp() {
       try {
         const user = await callApi('login', this.forms.login);
         this.currentUser = user;
+        this.stopAutoRefresh(); // Silent refresh tidak diperlukan untuk user yang login
         const storage = this.forms.login.remember ? localStorage : sessionStorage;
         localStorage.removeItem('qurbanUser');
         sessionStorage.removeItem('qurbanUser');
