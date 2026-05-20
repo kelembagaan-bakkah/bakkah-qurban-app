@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60 * 1000; // 30 hari
 const SESSION_KEY = 'user_session';
@@ -83,6 +83,7 @@ function qurbanApp() {
     toast: { type: 'success', message: '' },
     successModal: { show: false, title: '', message: '' },
     successModalTimer: null,
+    confirmModal: { show: false, title: '', message: '', onConfirm: null },
     sembelihanModal: {
       show: false,
       itemId: '',
@@ -134,7 +135,7 @@ function qurbanApp() {
     hewan: [],
     kupon: [],
     kuponBesar: [],
-    kuponBesarFilter: 'Pending',
+    kuponBesarFilter: 'semua',
     kuponBesarQuery: '',
     hewanSelesai: [],
     pengirimanBelumDiterima: [],
@@ -159,8 +160,12 @@ function qurbanApp() {
       const savedVersion = localStorage.getItem('app_version');
       if (savedVersion !== APP_VERSION) {
         console.log('Versi baru terdeteksi:', APP_VERSION);
-        // Clear all localStorage except app_version
+        // Clear all localStorage except app_version and preserved session
+        const preservedSession = localStorage.getItem(SESSION_KEY);
         localStorage.clear();
+        if (preservedSession) {
+          localStorage.setItem(SESSION_KEY, preservedSession);
+        }
         // Delete all caches
         if ('caches' in window) {
           caches.keys().then((names) => {
@@ -259,12 +264,56 @@ function qurbanApp() {
       if (this.loading) return this.loadingMessage;
       return 'Memproses...';
     },
-    loadSession() {
+    getStoredSession() {
       try {
-        return JSON.parse(localStorage.getItem('qurbanUser') || sessionStorage.getItem('qurbanUser') || 'null');
+        const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || localStorage.getItem('qurbanUser') || sessionStorage.getItem('qurbanUser');
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (!session || !session.loginTime) return session;
+
+        if (Date.now() - session.loginTime >= MAX_SESSION_AGE) {
+          this.removeSession();
+          return null;
+        }
+
+        return session;
       } catch (error) {
         return null;
       }
+    },
+    saveSession(user, remember) {
+      try {
+        const session = {
+          ...user,
+          loginTime: Date.now(),
+        };
+        if (remember) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          sessionStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem('qurbanUser');
+          sessionStorage.removeItem('qurbanUser');
+        } else {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem('qurbanUser');
+          sessionStorage.removeItem('qurbanUser');
+        }
+      } catch (error) {
+        console.warn('Gagal menyimpan session:', error);
+      }
+    },
+    removeSession() {
+      try {
+        localStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem('qurbanUser');
+        sessionStorage.removeItem('qurbanUser');
+      } catch (error) {
+        console.warn('Gagal menghapus session:', error);
+      }
+    },
+    loadSession() {
+      return this.getStoredSession();
     },
     isLoggedIn() {
       return Boolean(this.currentUser && this.currentUser.role);
@@ -314,8 +363,7 @@ function qurbanApp() {
     },
     logout() {
       this.currentUser = null;
-      localStorage.removeItem('qurbanUser');
-      sessionStorage.removeItem('qurbanUser');
+      this.removeSession();
       this.tab = 'dashboard';
       this.mobileMenuOpen = false;
       this.toast = { type: 'success', message: 'Anda sudah logout.' };
@@ -587,18 +635,36 @@ function qurbanApp() {
       if (this.saving) return;
       const id = item.ID;
       const prevStatus = item['Status Pengambilan'];
+      const nextStatus = prevStatus === 'Selesai' ? 'Pending' : 'Selesai';
 
-      // Optimistic
-      item['Status Pengambilan'] = 'Selesai';
+      const applyChange = async () => {
+        // Optimistic update
+        item['Status Pengambilan'] = nextStatus;
 
-      try {
-        await callApi('updateStatusKuponBesar', { id });
-        this.toast = { type: 'success', message: `Kupon ${item['Nomor Kupon']} ditandai Selesai.` };
-        this.silentRefreshData();
-      } catch (error) {
-        item['Status Pengambilan'] = prevStatus;
-        this.toast = { type: 'error', message: error?.message || 'Gagal mengubah status kupon.' };
+        try {
+          await callApi('updateStatusKuponBesar', { id, status: nextStatus });
+          this.toast = {
+            type: 'success',
+            message: nextStatus === 'Selesai'
+              ? `Kupon ${item['Nomor Kupon']} ditandai Selesai.`
+              : `Kupon ${item['Nomor Kupon']} dibatalkan.`,
+          };
+          this.silentRefreshData();
+        } catch (error) {
+          item['Status Pengambilan'] = prevStatus;
+          this.toast = { type: 'error', message: error?.message || 'Gagal mengubah status kupon.' };
+        }
+      };
+
+      if (prevStatus === 'Selesai') {
+        this.showConfirmModal('Batalkan kupon ini ?', applyChange);
+        return;
       }
+
+      await applyChange();
+    },
+    showConfirmModal(title, onConfirm) {
+      this.confirmModal = { show: true, title, message: '', onConfirm };
     },
     get filteredKuponBesar() {
       let data = this.kuponBesar;
@@ -619,10 +685,7 @@ function qurbanApp() {
         const user = await callApi('login', this.forms.login);
         this.currentUser = user;
         this.stopAutoRefresh(); // Silent refresh tidak diperlukan untuk user yang login
-        const storage = this.forms.login.remember ? localStorage : sessionStorage;
-        localStorage.removeItem('qurbanUser');
-        sessionStorage.removeItem('qurbanUser');
-        storage.setItem('qurbanUser', JSON.stringify(user));
+        this.saveSession(user, this.forms.login.remember);
         this.forms.login = { username: '', password: '', remember: true };
         this.toast = { type: 'success', message: `Selamat datang, ${user.name}.` };
         this.tab = this.defaultTabForRole(user.role);
@@ -824,6 +887,23 @@ function qurbanApp() {
         this.successModal.show = false;
         this.successModalTimer = null;
       }, 2400);
+    },
+    closeConfirmModal() {
+      if (this.confirmModal.onConfirm) {
+        this.confirmModal.onConfirm = null;
+      }
+      this.confirmModal.show = false;
+      this.confirmModal.title = '';
+      this.confirmModal.message = '';
+    },
+    confirmModalAction() {
+      if (typeof this.confirmModal.onConfirm === 'function') {
+        const action = this.confirmModal.onConfirm;
+        this.closeConfirmModal();
+        action();
+      } else {
+        this.closeConfirmModal();
+      }
     },
     closeSuccessModal() {
       if (this.successModalTimer) {

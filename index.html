@@ -130,6 +130,19 @@
           </div>
         </div>
 
+        <div x-show="confirmModal.show" x-transition.opacity class="busy-overlay" @click.away="closeConfirmModal()" style="pointer-events:auto;">
+          <div class="busy-card" style="max-width:380px; width:100%; text-align:center; padding: 1.5rem;">
+            <div style="margin-bottom:1rem; display:flex; justify-content:center;">
+              <i data-lucide="alert-triangle" style="width:48px; height:48px; color:#b45309;"></i>
+            </div>
+            <strong x-text="confirmModal.title" style="display:block; margin-bottom:0.75rem; font-size:1.1rem;"></strong>
+            <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap; margin-top:1rem;">
+              <button type="button" class="btn-secondary" @click="closeConfirmModal()">Tidak</button>
+              <button type="button" class="btn-primary" @click="confirmModalAction()">Iya</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Modal Sembelihan — muncul setelah toggle status berhasil -->
         <div
           x-show="sembelihanModal.show"
@@ -468,11 +481,13 @@
                             type="button"
                             class="btn-secondary"
                             @click="selesaiKuponBesar(item)"
-                            :disabled="item['Status Pengambilan'] === 'Selesai' || saving"
-                            :style="item['Status Pengambilan'] === 'Selesai' ? 'background:#dcfce7;border-color:#bbf7d0;color:#15803d;cursor:default;opacity:1;font-size:0.72rem;min-height:32px;padding:0 0.6rem;' : 'font-size:0.72rem;min-height:32px;padding:0 0.6rem;'"
+                            :disabled="saving"
+                            :style="item['Status Pengambilan'] === 'Selesai'
+                              ? 'background:#fde68a;border-color:#fcd34d;color:#92400e;font-size:0.72rem;min-height:32px;padding:0 0.6rem;'
+                              : 'font-size:0.72rem;min-height:32px;padding:0 0.6rem;'"
                           >
                             <i data-lucide="check-circle" style="height:14px;width:14px;flex:0 0 auto;"></i>
-                            <span x-text="item['Status Pengambilan'] === 'Selesai' ? 'Selesai' : 'Selesaikan'" style="white-space:nowrap;"></span>
+                            <span x-text="item['Status Pengambilan'] === 'Selesai' ? 'Batalkan' : 'Selesaikan'" style="white-space:nowrap;"></span>
                           </button>
                         </td>
                       </tr>

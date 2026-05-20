@@ -390,7 +390,7 @@ function handleApiRequest_(params) {
         data = getKuponBesar();
         break;
       case 'updateStatusKuponBesar':
-        data = updateStatusKuponBesar(payload.id);
+        data = updateStatusKuponBesar(payload.id, payload.status);
         break;
       default:
         throw new Error(`Action ${action} tidak dikenal.`);
@@ -572,15 +572,21 @@ function getKuponBesar() {
   return readSheetAsObjects_(SHEETS.KUPON_BESAR);
 }
 
-function updateStatusKuponBesar(id) {
+function updateStatusKuponBesar(id, status) {
   const sheet = getSheet_(SHEETS.KUPON_BESAR);
   const row = findRowByValue_(sheet, 'ID', id);
   if (row < 2) throw new Error('Kupon besar tidak ditemukan.');
 
-  const h = getHeaderMap_(sheet);
-  sheet.getRange(row, h.indexOf('Status Pengambilan')).setValue('Selesai');
+  const targetStatus = String(status || 'Selesai').trim();
+  const validStatuses = ['Pending', 'Selesai'];
+  if (!validStatuses.includes(targetStatus)) {
+    throw new Error('Status kupon tidak valid.');
+  }
 
-  return { success: true, message: `Kupon ${id} ditandai Selesai.` };
+  const h = getHeaderMap_(sheet);
+  sheet.getRange(row, h.indexOf('Status Pengambilan')).setValue(targetStatus);
+
+  return { success: true, message: `Kupon ${id} ditandai ${targetStatus}.` };
 }
 
 function sumDaging_(rows) {
