@@ -1,3 +1,4 @@
+const APP_VERSION = '1.0.5';
 const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 
 // ── API Cache ──
@@ -152,6 +153,25 @@ function qurbanApp() {
       login: { username: '', password: '', remember: true },
     },
     init() {
+      // Auto-detect version update
+      const savedVersion = localStorage.getItem('app_version');
+      if (savedVersion !== APP_VERSION) {
+        console.log('Versi baru terdeteksi:', APP_VERSION);
+        // Clear all localStorage except app_version
+        localStorage.clear();
+        // Delete all caches
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            names.forEach((name) => caches.delete(name));
+          });
+        }
+        localStorage.setItem('app_version', APP_VERSION);
+        window.location.reload(true);
+        return;
+      } else {
+        localStorage.setItem('app_version', APP_VERSION);
+      }
+
       this.currentUser = this.loadSession();
       this.updateClock();
       this.clockTimer = setInterval(() => this.updateClock(), 30000);
@@ -305,25 +325,28 @@ function qurbanApp() {
       this.savingMessage = 'Membersihkan cache...';
 
       try {
-        clearCache();
+        // Clear localStorage
+        localStorage.clear();
+        localStorage.setItem('app_version', APP_VERSION);
 
+        // Delete all caches
         if ('caches' in window) {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map((name) => caches.delete(name)));
         }
 
+        // Unregister all service workers
         if ('serviceWorker' in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map((reg) => reg.unregister()));
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
         }
 
-        this.toast = {
-          type: 'success',
-          message: 'Cache berhasil dibersihkan. Segarkan halaman untuk memakai versi terbaru.',
-        };
+        // Force reload
+        window.location.reload(true);
       } catch (error) {
         this.toast = { type: 'error', message: error?.message || 'Gagal membersihkan cache.' };
-      } finally {
         this.saving = false;
       }
     },

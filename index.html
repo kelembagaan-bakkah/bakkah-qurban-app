@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900;950&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=20260519-3">
+    <link rel="stylesheet" href="./styles.css?v=1.0.5">
   </head>
   <body>
     <main x-data="qurbanApp()" x-init="init()" :aria-busy="loading || saving" x-cloak>
@@ -1038,6 +1038,12 @@
               <h2 x-text="currentUser ? currentUser.name : ''"></h2>
               <p x-text="currentUser ? currentUser.role : ''"></p>
             </div>
+            <div class="account-meta">
+              <div class="app-version-card">
+                <i data-lucide="info" style="height:16px;width:16px;color:#71717a;"></i>
+                <span>Qurban App V4 — v1.0.5</span>
+              </div>
+            </div>
             <div class="account-actions">
               <button type="button" class="btn-primary" @click="logout()">
                 <i data-lucide="log-out"></i>
@@ -1067,6 +1073,6 @@
       </nav>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=1.0.5"></script>
   </body>
 </html>
