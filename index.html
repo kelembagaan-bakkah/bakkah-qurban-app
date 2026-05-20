@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900;950&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=1.0.5">
+    <link rel="stylesheet" href="./styles.css?v=1.0.7">
   </head>
   <body>
     <main x-data="qurbanApp()" x-init="init()" :aria-busy="loading || saving" x-cloak>
@@ -51,6 +51,9 @@
             <button x-show="!isLoggedIn()" type="button" class="login-button" @click="openLogin()">
               <i data-lucide="log-in"></i>
               <span>Login</span>
+            </button>
+            <button x-show="isLoggedIn()" type="button" class="header-account-button" @click="setTab('account')" aria-label="Akun">
+              <i data-lucide="circle-user-round"></i>
             </button>
           </div>
         </div>
@@ -1041,7 +1044,7 @@
             <div class="account-meta">
               <div class="app-version-card">
                 <i data-lucide="info" style="height:16px;width:16px;color:#71717a;"></i>
-                <span>Qurban App V4 — v1.0.6</span>
+                <span>Qurban App V4 — v1.0.7</span>
               </div>
             </div>
             <div class="account-actions">
@@ -1073,6 +1076,6 @@
       </nav>
     </main>
 
-    <script src="./app.js?v=1.0.6"></script>
+    <script src="./app.js?v=1.0.7"></script>
   </body>
 </html>

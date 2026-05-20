@@ -339,8 +339,22 @@ textarea {
 }
 
 .header-refresh,
-.login-button {
+.login-button,
+.header-account-button {
   gap: 0.45rem;
+}
+
+.header-account-button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+  padding: 0;
 }
 
 .login-button {

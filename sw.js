@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.7';
 const CACHE = `qurban-app-v${APP_VERSION}`;
 
 const STATIC_ASSETS = [

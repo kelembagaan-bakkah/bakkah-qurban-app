@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 
 // ── API Cache ──
@@ -105,13 +105,13 @@ function qurbanApp() {
     tabs: [
       { key: 'dashboard', label: 'Beranda', mobileLabel: 'Home', icon: 'layout-dashboard', roles: ['Public', 'Admin', 'RPH', 'Pondok', 'Developer'], bottomRoles: ['Admin', 'RPH', 'Pondok'] },
       { key: 'admin-hewan', label: 'Hewan', icon: 'badge-plus', roles: ['Admin', 'Developer'], bottomRoles: ['Admin'] },
-      { key: 'admin-kupon', label: 'Kupon', icon: 'ticket', roles: ['Admin', 'Developer'], bottomRoles: ['Admin'] },
+      { key: 'admin-kupon', label: 'Kupon', icon: 'ticket', roles: ['Admin', 'Pondok', 'Developer'], bottomRoles: ['Admin', 'Pondok'] },
       { key: 'rph-sembelihan', label: 'Sembelihan', icon: 'list-checks', roles: ['RPH', 'Developer'], bottomRoles: ['RPH'] },
       { key: 'rph-pengiriman', label: 'Pengiriman', icon: 'truck', roles: ['RPH', 'Developer'], bottomRoles: ['RPH'] },
       { key: 'pondok-penerimaan', label: 'Penerimaan', mobileLabel: 'Terima', icon: 'package-check', roles: ['Pondok', 'Developer'], bottomRoles: ['Pondok'] },
       { key: 'pondok-masuk', label: 'D. Masuk', icon: 'archive-restore', roles: ['Pondok', 'Developer'], bottomRoles: ['Pondok'] },
       { key: 'pondok-keluar', label: 'D. Keluar', icon: 'archive-x', roles: ['Pondok', 'Developer'], bottomRoles: ['Pondok'] },
-      { key: 'account', label: 'Akun', icon: 'circle-user-round', roles: ['Admin', 'RPH', 'Pondok', 'Developer'], bottomRoles: ['Admin', 'RPH', 'Pondok'] },
+      { key: 'account', label: 'Akun', icon: 'circle-user-round', roles: ['Admin', 'RPH', 'Pondok', 'Developer'], bottomRoles: [] },
     ],
     partFields: [
       { key: 'kepala', label: 'Qty Kepala' },
@@ -399,7 +399,7 @@ function qurbanApp() {
         this.syncIcons();
       }
 
-      this.loading = !this.hasLoaded;
+      this.loading = true;
       this.loadingMessage = this.hasLoaded ? 'Memperbarui data...' : 'Memuat data...';
 
       try {
