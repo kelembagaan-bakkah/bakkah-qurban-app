@@ -127,6 +127,62 @@
           </div>
         </div>
 
+        <!-- Modal Sembelihan — muncul setelah toggle status berhasil -->
+        <div
+          x-show="sembelihanModal.show"
+          x-transition.opacity
+          class="busy-overlay"
+          style="pointer-events:auto;"
+        >
+          <div class="busy-card" style="max-width:400px; width:100%; text-align:center; padding:1.5rem;">
+
+            <!-- Icon sesuai status -->
+            <div style="margin-bottom:1rem; display:flex; justify-content:center;">
+              <template x-if="sembelihanModal.nextStatus === 'SELESAI'">
+                <i data-lucide="check-circle-2" style="width:52px; height:52px; color:#16a34a;"></i>
+              </template>
+              <template x-if="sembelihanModal.nextStatus === 'PENDING'">
+                <i data-lucide="circle-dashed" style="width:52px; height:52px; color:#64748b;"></i>
+              </template>
+            </div>
+
+            <!-- Judul -->
+            <strong style="display:block; font-size:1.1rem; margin-bottom:0.5rem;"
+              x-text="sembelihanModal.nextStatus === 'SELESAI'
+                ? 'Sembelihan Selesai!'
+                : 'Status Diperbarui'"
+            ></strong>
+
+            <!-- Pesan -->
+            <span style="display:block; color:#334155; margin-bottom:1.5rem; font-size:0.92rem;"
+              x-text="sembelihanModal.nextStatus === 'SELESAI'
+                ? `${sembelihanModal.itemDesc} telah ditandai selesai disembelih. Lanjutkan ke pengiriman?`
+                : `Status ${sembelihanModal.itemDesc} diubah kembali ke PENDING.`"
+            ></span>
+
+            <!-- Tombol — hanya tampilkan "Buat Pengiriman" jika status SELESAI -->
+            <div style="display:flex; gap:0.65rem; justify-content:center;">
+              <button
+                type="button"
+                class="btn-secondary"
+                @click="closeSembelihanModal()"
+              >
+                Tutup
+              </button>
+              <template x-if="sembelihanModal.nextStatus === 'SELESAI'">
+                <button
+                  type="button"
+                  class="btn-primary"
+                  @click="goToPengiriman(sembelihanModal.itemId)"
+                >
+                  Buat Pengiriman
+                </button>
+              </template>
+            </div>
+
+          </div>
+        </div>
+
         <section x-show="tab === 'dashboard'" class="dashboard-shell">
           <div x-show="loading && !hasLoaded" class="dashboard-skeleton">
             <div class="skeleton-card"></div>
@@ -139,42 +195,73 @@
 
           <div x-show="!loading || hasLoaded" class="dashboard-shell">
           <div class="metric-grid">
-            <article class="metric-card metric-green">
-              <div class="metric-icon"><i data-lucide="check"></i></div>
-              <div>
-                <span>DAGING TERSEDIA</span>
-                <strong x-text="formatNumber(availablePackages())"></strong>
-                <p>
-                  Besar <b x-text="formatNumber(availablePackageBreakdown().besar)"></b>
-                  · Kecil <b x-text="formatNumber(availablePackageBreakdown().kecil)"></b>
-                </p>
-                <small>Siap untuk didistribusikan</small>
+
+            <!-- Daging Masuk -->
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+              <div class="bg-blue-600 px-6 py-4">
+                <h2 class="text-2xl font-black text-white tracking-wide text-center">
+                  DAGING MASUK
+                </h2>
               </div>
-            </article>
-            <article class="metric-card metric-blue">
-              <div class="metric-icon"><i data-lucide="arrow-down"></i></div>
-              <div>
-                <span>DAGING MASUK</span>
-                <strong x-text="formatNumber(packageTotal(dashboard.masuk))"></strong>
-                <p>
-                  Besar <b x-text="formatNumber(packageBreakdown(dashboard.masuk).besar)"></b>
-                  · Kecil <b x-text="formatNumber(packageBreakdown(dashboard.masuk).kecil)"></b>
-                </p>
-                <small>Total daging dari hewan</small>
+              <div class="grid grid-cols-2 divide-x divide-slate-200">
+                <div class="p-6 text-center">
+                  <p class="text-blue-700 font-bold uppercase text-sm">Besar</p>
+                  <div class="mt-3 text-6xl font-black text-blue-600" x-text="formatNumber(dashboard.masuk.besar)"></div>
+                </div>
+                <div class="p-6 text-center">
+                  <p class="text-blue-700 font-bold uppercase text-sm">Kecil</p>
+                  <div class="mt-3 text-6xl font-black text-blue-600" x-text="formatNumber(dashboard.masuk.kecil)"></div>
+                </div>
               </div>
-            </article>
-            <article class="metric-card metric-orange">
-              <div class="metric-icon"><i data-lucide="arrow-up"></i></div>
-              <div>
-                <span>DAGING KELUAR</span>
-                <strong x-text="formatNumber(packageTotal(dashboard.keluar))"></strong>
-                <p>
-                  Besar <b x-text="formatNumber(packageBreakdown(dashboard.keluar).besar)"></b>
-                  · Kecil <b x-text="formatNumber(packageBreakdown(dashboard.keluar).kecil)"></b>
-                </p>
-                <small>Total daging yang didistribusikan</small>
+              <div class="bg-blue-50 border-t border-blue-100 py-3 text-center">
+                <p class="text-blue-700 font-bold tracking-wide">TOTAL DAGING MASUK</p>
               </div>
-            </article>
+            </div>
+
+            <!-- Daging Tersedia -->
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+              <div class="bg-green-600 px-6 py-4">
+                <h2 class="text-2xl font-black text-white tracking-wide text-center">
+                  DAGING TERSEDIA
+                </h2>
+              </div>
+              <div class="grid grid-cols-2 divide-x divide-slate-200">
+                <div class="p-6 text-center">
+                  <p class="text-green-700 font-bold uppercase text-sm">Besar</p>
+                  <div class="mt-3 text-6xl font-black text-green-600" x-text="formatNumber(availablePackageBreakdown().besar)"></div>
+                </div>
+                <div class="p-6 text-center">
+                  <p class="text-green-700 font-bold uppercase text-sm">Kecil</p>
+                  <div class="mt-3 text-6xl font-black text-green-600" x-text="formatNumber(availablePackageBreakdown().kecil)"></div>
+                </div>
+              </div>
+              <div class="bg-green-50 border-t border-green-100 py-3 text-center">
+                <p class="text-green-700 font-bold tracking-wide">SIAP DIDISTRIBUSIKAN</p>
+              </div>
+            </div>
+
+            <!-- Daging Keluar -->
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+              <div class="bg-red-600 px-6 py-4">
+                <h2 class="text-2xl font-black text-white tracking-wide text-center">
+                  DAGING KELUAR
+                </h2>
+              </div>
+              <div class="grid grid-cols-2 divide-x divide-slate-200">
+                <div class="p-6 text-center">
+                  <p class="text-red-700 font-bold uppercase text-sm">Besar</p>
+                  <div class="mt-3 text-6xl font-black text-red-600" x-text="formatNumber(dashboard.keluar.besar)"></div>
+                </div>
+                <div class="p-6 text-center">
+                  <p class="text-red-700 font-bold uppercase text-sm">Kecil</p>
+                  <div class="mt-3 text-6xl font-black text-red-600" x-text="formatNumber(dashboard.keluar.kecil)"></div>
+                </div>
+              </div>
+              <div class="bg-red-50 border-t border-red-100 py-3 text-center">
+                <p class="text-red-700 font-bold tracking-wide">TOTAL DAGING KELUAR</p>
+              </div>
+            </div>
+
             <article class="part-card part-purple compact-metric">
               <img src="./assets/ic-kepala.png" alt="" class="part-icon">
               <span>JUMLAH KEPALA</span>
@@ -315,34 +402,109 @@
         </section>
 
         <section x-show="tab === 'admin-kupon' && canAccess('admin-kupon')">
-          <div class="card-grid-4" style="margin-bottom:1.5rem;">
-            <article class="mini-stat-card">
-              <span>Kupon Besar</span>
-              <strong x-text="kuponCount('Besar')"></strong>
-              <small>Total kupon besar yang tercatat</small>
-            </article>
-            <article class="mini-stat-card">
-              <span>Kupon Kecil</span>
-              <strong x-text="kuponCount('Kecil')"></strong>
-              <small>Total kupon kecil yang tercatat</small>
-            </article>
+          <div class="section-tabs">
+            <button type="button" class="tab-button" :class="isPanelMode('kupon', 'besar') ? 'tab-active' : ''" @click="setPanelMode('kupon', 'besar')">Kupon Besar</button>
+            <button type="button" class="tab-button" :class="isPanelMode('kupon', 'kecil') ? 'tab-active' : ''" @click="setPanelMode('kupon', 'kecil')">Kupon Kecil</button>
           </div>
 
-          <form class="panel form-stack" @submit.prevent="submitKupon()">
-            <h2 class="section-title">Input Kupon</h2>
-            <label class="field-label">Jenis Kupon</label>
-            <select class="field" x-model="forms.kupon.jenis" required>
-              <option>Besar</option>
-              <option>Kecil</option>
-            </select>
-            <label class="field-label">Qty</label>
-            <input class="field" type="number" min="1" x-model.number="forms.kupon.qty" required>
-            <button class="btn-primary" type="submit" :disabled="forms.kupon._submitting">
-              <span class="button-spinner" x-show="forms.kupon._submitting"></span>
-              <i data-lucide="ticket" x-show="!forms.kupon._submitting"></i>
-              <span x-text="forms.kupon._submitting ? 'Mengirim Data...' : 'Simpan Kupon'"></span>
-            </button>
-          </form>
+          <!-- Kupon Besar -->
+          <div x-show="isPanelMode('kupon', 'besar')">
+            <div class="card-grid-4" style="margin-bottom:1.5rem;">
+              <article class="mini-stat-card">
+                <span>Total Kupon Besar</span>
+                <strong x-text="kuponBesar.length"></strong>
+                <small>Auto-generate dari registrasi hewan</small>
+              </article>
+              <article class="mini-stat-card">
+                <span>Pending</span>
+                <strong x-text="kuponBesar.filter(function(i){return i['Status Pengambilan']==='Pending'}).length"></strong>
+                <small>Belum diambil</small>
+              </article>
+            </div>
+
+            <div class="panel">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+                <h2 class="section-title" style="margin-bottom:0;">Daftar Kupon Besar</h2>
+                <div style="display:flex;gap:0.35rem;">
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'semua' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'semua'">Semua</button>
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Pending' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Pending'">Pending</button>
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Selesai' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Selesai'">Selesai</button>
+                </div>
+              </div>
+
+              <div class="sembelihan-search" style="margin-bottom:1rem;">
+                <i data-lucide="search"></i>
+                <input class="field" type="text" placeholder="Cari nomor kupon..." x-model="kuponBesarQuery">
+              </div>
+
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Nomor Kupon</th>
+                      <th>Status Pengambilan</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="item in filteredKuponBesar" :key="item.ID">
+                      <tr>
+                        <td>
+                          <strong x-text="item['Nomor Kupon']" style="font-weight:600;color:#09090b;"></strong>
+                        </td>
+                        <td>
+                          <span
+                            x-text="item['Status Pengambilan']"
+                            :style="item['Status Pengambilan'] === 'Selesai'
+                              ? 'background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;'
+                              : 'background:#fef9c3;color:#a16207;border:1px solid #fef08a;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;'"
+                          ></span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            class="btn-secondary"
+                            @click="selesaiKuponBesar(item)"
+                            :disabled="item['Status Pengambilan'] === 'Selesai' || saving"
+                            :style="item['Status Pengambilan'] === 'Selesai' ? 'background:#dcfce7;border-color:#bbf7d0;color:#15803d;cursor:default;opacity:1;' : ''"
+                          >
+                            <i data-lucide="check-circle" style="height:16px;width:16px;"></i>
+                            <span x-text="item['Status Pengambilan'] === 'Selesai' ? 'Selesai' : 'Selesaikan'"></span>
+                          </button>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="!filteredKuponBesar.length">
+                      <td colspan="3" class="empty-text">Belum ada data kupon besar. Kupon besar akan otomatis dibuat saat registrasi hewan.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kupon Kecil -->
+          <div x-show="isPanelMode('kupon', 'kecil')">
+            <div class="card-grid-4" style="margin-bottom:1.5rem;">
+              <article class="mini-stat-card">
+                <span>Kupon Kecil</span>
+                <strong x-text="kuponCount('Kecil')"></strong>
+                <small>Total kupon kecil tercatat</small>
+              </article>
+            </div>
+
+            <form class="panel form-stack" @submit.prevent="submitKupon()">
+              <h2 class="section-title">Input Kupon Kecil</h2>
+              <input type="hidden" x-model="forms.kupon.jenis" value="Kecil">
+              <label class="field-label">Qty</label>
+              <input class="field" type="number" min="1" x-model.number="forms.kupon.qty" required>
+              <button class="btn-primary" type="submit" :disabled="forms.kupon._submitting">
+                <span class="button-spinner" x-show="forms.kupon._submitting"></span>
+                <i data-lucide="ticket" x-show="!forms.kupon._submitting"></i>
+                <span x-text="forms.kupon._submitting ? 'Mengirim Data...' : 'Simpan Kupon Kecil'"></span>
+              </button>
+            </form>
+          </div>
         </section>
 
         <section x-show="tab === 'rph-sembelihan' && canAccess('rph-sembelihan')">
@@ -364,9 +526,15 @@
                 <article class="animal-card" :class="item['Status Sembelihan'] === 'SELESAI' ? 'animal-done' : 'animal-pending'">
                   <strong x-text="item.Deskripsi"></strong>
                   <span x-text="item['Status Sembelihan']"></span>
-                  <button type="button" class="btn-secondary" @click="toggleStatus(item)" :disabled="saving">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    @click="toggleStatus(item)"
+                    :disabled="saving"
+                  >
                     <span class="button-spinner dark" x-show="saving"></span>
-                    <span x-text="saving ? 'Update...' : 'Update'"></span>
+                    <i data-lucide="check-square" x-show="!saving"></i>
+                    <span x-text="saving ? 'Memproses...' : 'Update Status'"></span>
                   </button>
                 </article>
               </template>
@@ -406,6 +574,8 @@
                 </label>
               </template>
             </div>
+            <label class="field-label">Catatan Pengiriman</label>
+            <textarea class="field" rows="3" x-model="forms.pengiriman.catatan" placeholder="Tulis catatan pengiriman (opsional)"></textarea>
             <button class="btn-primary" type="submit" :disabled="forms.pengiriman._submitting">
               <span class="button-spinner" x-show="forms.pengiriman._submitting"></span>
               <i data-lucide="truck" x-show="!forms.pengiriman._submitting"></i>
@@ -415,17 +585,78 @@
 
           <div class="history-panel" x-show="isPanelMode('pengiriman', 'history')">
             <h2 class="section-title">Riwayat Pengiriman</h2>
-            <template x-if="riwayatPengiriman.length">
-              <div class="history-list">
-                <template x-for="item in riwayatPengiriman" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
-                  <div class="history-item">
-                    <strong x-text="item['ID Pengiriman'] || item.id || 'Riwayat Pengiriman'"></strong>
-                    <span x-text="item.Deskripsi || item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+            <div class="penerimaan-cards">
+              <template x-for="item in riwayatPengiriman" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
+                <div class="penerimaan-card" :class="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id] ? 'is-expanded' : ''">
+                  <div class="penerimaan-card-header" @click="togglePenerimaanDetail(item['ID Pengiriman'] || item.id)">
+                    <div>
+                      <strong x-text="item['ID Pengiriman'] || item.id || 'Pengiriman'" style="display:block;font-weight:600;color:#09090b;"></strong>
+                      <span style="font-size:0.8rem;color:#71717a;" x-text="item['Deskripsi Hewan'] || item.Deskripsi || '-'"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span
+                        x-text="item.Status"
+                        :style="item.Status === 'DITERIMA'
+                          ? 'background:#dcfce7;color:#15803d;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;'
+                          : 'background:#dbeafe;color:#1d4ed8;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;'"
+                      ></span>
+                      <i data-lucide="chevron-down" style="transition:transform 0.2s ease;" :style="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id] ? 'transform:rotate(180deg);' : ''"></i>
+                    </div>
                   </div>
-                </template>
-              </div>
-            </template>
-            <p x-show="!riwayatPengiriman.length" class="empty-text">Belum ada riwayat pengiriman.</p>
+                  <div x-show="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id]" class="penerimaan-card-detail">
+                    <div class="penerimaan-detail-grid">
+                      <div>
+                        <span class="field-label">ID Pengiriman</span>
+                        <strong x-text="item['ID Pengiriman'] || item.id || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Hewan</span>
+                        <strong x-text="item['Deskripsi Hewan'] || item.Deskripsi || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kepala</span>
+                        <strong x-text="item['Qty Kepala'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kaki</span>
+                        <strong x-text="item['Qty Kaki'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Paha</span>
+                        <strong x-text="item['Qty Paha'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Hati</span>
+                        <strong x-text="item['Qty Hati'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Jantung</span>
+                        <strong x-text="item['Qty Jantung'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Buntut</span>
+                        <strong x-text="item['Qty Buntut'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Badan</span>
+                        <strong x-text="item['Qty Badan'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Status</span>
+                        <strong x-text="item.Status || '-'"></strong>
+                      </div>
+                      <template x-if="item.Catatan">
+                        <div style="grid-column:1/-1;">
+                          <span class="field-label">Catatan</span>
+                          <p style="color:#334155;font-size:0.85rem;margin-top:0.2rem;" x-text="item.Catatan"></p>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!riwayatPengiriman.length" class="empty-text">Belum ada riwayat pengiriman.</p>
+            </div>
           </div>
         </section>
 
@@ -436,7 +667,7 @@
           </div>
           <div class="panel" x-show="isPanelMode('penerimaan', 'pending')">
             <h2 class="section-title">Penerimaan Pengiriman</h2>
-            <div class="table-wrap">
+            <div class="table-wrap" x-show="window.innerWidth >= 640" style="display:none;">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -453,7 +684,7 @@
                       <td x-text="item['Deskripsi Hewan']"></td>
                       <td x-text="item.Status"></td>
                       <td>
-                        <button type="button" class="btn-secondary" @click="terimaPengiriman(item['ID Pengiriman'])" :disabled="saving">
+                        <button type="button" class="btn-secondary" @click="confirmTerimaPengiriman(item)" :disabled="saving">
                           <span class="button-spinner dark" x-show="saving"></span>
                           <span x-text="saving ? 'Proses...' : 'Terima'"></span>
                         </button>
@@ -466,20 +697,171 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- Mobile card layout -->
+            <div class="penerimaan-cards">
+              <template x-for="item in pengirimanBelumDiterima" :key="item['ID Pengiriman']">
+                <div class="penerimaan-card" :class="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman']] ? 'is-expanded' : ''">
+                  <div class="penerimaan-card-header" @click="togglePenerimaanDetail(item['ID Pengiriman'])">
+                    <div>
+                      <strong x-text="item['ID Pengiriman']" style="display:block;font-weight:600;color:#09090b;"></strong>
+                      <span style="font-size:0.8rem;color:#71717a;" x-text="item['Deskripsi Hewan']"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span style="background:#dbeafe;color:#1d4ed8;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;" x-text="item.Status"></span>
+                      <i data-lucide="chevron-down" style="transition:transform 0.2s ease;" :style="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman']] ? 'transform:rotate(180deg);' : ''"></i>
+                    </div>
+                  </div>
+                  <div x-show="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman']]" class="penerimaan-card-detail">
+                    <div class="penerimaan-detail-grid">
+                      <div>
+                        <span class="field-label">ID Pengiriman</span>
+                        <strong x-text="item['ID Pengiriman']"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Hewan</span>
+                        <strong x-text="item['Deskripsi Hewan']"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kepala</span>
+                        <strong x-text="item['Qty Kepala'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kaki</span>
+                        <strong x-text="item['Qty Kaki'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Paha</span>
+                        <strong x-text="item['Qty Paha'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Hati</span>
+                        <strong x-text="item['Qty Hati'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Jantung</span>
+                        <strong x-text="item['Qty Jantung'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Buntut</span>
+                        <strong x-text="item['Qty Buntut'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Badan</span>
+                        <strong x-text="item['Qty Badan'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Status</span>
+                        <strong x-text="item.Status"></strong>
+                      </div>
+                      <template x-if="item.Catatan">
+                        <div style="grid-column:1/-1;">
+                          <span class="field-label">Catatan</span>
+                          <p style="color:#334155;font-size:0.85rem;margin-top:0.2rem;" x-text="item.Catatan"></p>
+                        </div>
+                      </template>
+                    </div>
+                    <button type="button" class="btn-primary" @click="confirmTerimaPengiriman(item)" :disabled="saving" style="margin-top:0.75rem;">
+                      <span class="button-spinner" x-show="saving"></span>
+                      <i data-lucide="package-check" x-show="!saving" style="height:16px;width:16px;"></i>
+                      <span x-text="saving ? 'Proses...' : 'Terima Pengiriman'"></span>
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!pengirimanBelumDiterima.length" class="empty-text">Tidak ada pengiriman menunggu diterima.</p>
+            </div>
+          </div>
+
+          <!-- Popup Konfirmasi Terima -->
+          <div x-show="penerimaanConfirm.show" x-transition.opacity class="busy-overlay" style="pointer-events:auto;">
+            <div class="busy-card" style="max-width:360px; width:100%; text-align:center; padding:1.5rem;">
+              <div style="margin-bottom:1rem;">
+                <i data-lucide="alert-triangle" style="width:40px; height:40px; color:#f59e0b;"></i>
+              </div>
+              <strong style="display:block; margin-bottom:0.5rem; font-size:1rem;">Konfirmasi Penerimaan</strong>
+              <span style="display:block; color:#334155; font-size:0.85rem; margin-bottom:0.25rem;">
+                <strong x-text="penerimaanConfirm.item ? penerimaanConfirm.item['ID Pengiriman'] : ''"></strong>
+              </span>
+              <span style="display:block; color:#334155; font-size:0.85rem; margin-bottom:1rem;" x-text="penerimaanConfirm.item ? penerimaanConfirm.item['Deskripsi Hewan'] : ''"></span>
+              <div style="display:flex; gap:0.65rem; justify-content:center;">
+                <button type="button" class="btn-secondary" @click="closePenerimaanConfirm()">Batal</button>
+                <button type="button" class="btn-primary" style="width:auto;color:#ffffff;" @click="terimaPengiriman(penerimaanConfirm.item ? penerimaanConfirm.item['ID Pengiriman'] : null)" :disabled="saving">
+                  <span class="button-spinner" x-show="saving"></span>
+                  <span x-text="saving ? 'Proses...' : 'Ya, Terima'"></span>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="history-panel" x-show="isPanelMode('penerimaan', 'history')">
             <h2 class="section-title">Riwayat Penerimaan</h2>
-            <template x-if="riwayatPenerimaan.length">
-              <div class="history-list">
-                <template x-for="item in riwayatPenerimaan" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
-                  <div class="history-item">
-                    <strong x-text="item['ID Pengiriman'] || item.id || 'Penerimaan'"></strong>
-                    <span x-text="item.Deskripsi || item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+            <div class="penerimaan-cards">
+              <template x-for="item in riwayatPenerimaan" :key="item['ID Pengiriman'] || item.id || item.tanggal || item.Deskripsi">
+                <div class="penerimaan-card" :class="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id] ? 'is-expanded' : ''">
+                  <div class="penerimaan-card-header" @click="togglePenerimaanDetail(item['ID Pengiriman'] || item.id)">
+                    <div>
+                      <strong x-text="item['ID Pengiriman'] || item.id || 'Penerimaan'" style="display:block;font-weight:600;color:#09090b;"></strong>
+                      <span style="font-size:0.8rem;color:#71717a;" x-text="item['Deskripsi Hewan'] || item.Deskripsi || '-'"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span style="background:#dcfce7;color:#15803d;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;" x-text="item.Status || 'DITERIMA'"></span>
+                      <i data-lucide="chevron-down" style="transition:transform 0.2s ease;" :style="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id] ? 'transform:rotate(180deg);' : ''"></i>
+                    </div>
                   </div>
-                </template>
-              </div>
-            </template>
-            <p x-show="!riwayatPenerimaan.length" class="empty-text">Belum ada riwayat penerimaan.</p>
+                  <div x-show="penerimaanExpanded && penerimaanExpanded[item['ID Pengiriman'] || item.id]" class="penerimaan-card-detail">
+                    <div class="penerimaan-detail-grid">
+                      <div>
+                        <span class="field-label">ID Pengiriman</span>
+                        <strong x-text="item['ID Pengiriman'] || item.id || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Hewan</span>
+                        <strong x-text="item['Deskripsi Hewan'] || item.Deskripsi || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kepala</span>
+                        <strong x-text="item['Qty Kepala'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Kaki</span>
+                        <strong x-text="item['Qty Kaki'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Paha</span>
+                        <strong x-text="item['Qty Paha'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Hati</span>
+                        <strong x-text="item['Qty Hati'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Jantung</span>
+                        <strong x-text="item['Qty Jantung'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Buntut</span>
+                        <strong x-text="item['Qty Buntut'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Qty Badan</span>
+                        <strong x-text="item['Qty Badan'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Status</span>
+                        <strong style="color:#15803d;" x-text="item.Status || 'DITERIMA'"></strong>
+                      </div>
+                      <template x-if="item.Catatan">
+                        <div style="grid-column:1/-1;">
+                          <span class="field-label">Catatan</span>
+                          <p style="color:#334155;font-size:0.85rem;margin-top:0.2rem;" x-text="item.Catatan"></p>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!riwayatPenerimaan.length" class="empty-text">Belum ada riwayat penerimaan.</p>
+            </div>
           </div>
         </section>
 
@@ -514,17 +896,55 @@
           </form>
           <div class="history-panel" x-show="isPanelMode('masuk', 'history')">
             <h2 class="section-title">Riwayat Daging Masuk</h2>
-            <template x-if="riwayatMasuk.length">
-              <div class="history-list">
-                <template x-for="item in riwayatMasuk" :key="item.id || item.tanggal || item.keterangan">
-                  <div class="history-item">
-                    <strong x-text="item.tanggal || item.id || 'Riwayat Masuk'"></strong>
-                    <span x-text="item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+            <div class="penerimaan-cards">
+              <template x-for="item in riwayatMasuk" :key="item['ID Input'] || item.id || item.tanggal">
+                <div class="penerimaan-card" :class="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id] ? 'is-expanded' : ''">
+                  <div class="penerimaan-card-header" @click="togglePenerimaanDetail(item['ID Input'] || item.id)">
+                    <div>
+                      <strong x-text="item['ID Input'] || item.id || 'Daging Masuk'" style="display:block;font-weight:600;color:#09090b;"></strong>
+                      <span style="font-size:0.8rem;color:#71717a;" x-text="item['Tanggal Input'] || item.tanggal || '-'"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span style="background:#dbeafe;color:#1d4ed8;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;">Masuk</span>
+                      <i data-lucide="chevron-down" style="transition:transform 0.2s ease;" :style="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id] ? 'transform:rotate(180deg);' : ''"></i>
+                    </div>
                   </div>
-                </template>
-              </div>
-            </template>
-            <p x-show="!riwayatMasuk.length" class="empty-text">Belum ada riwayat daging masuk.</p>
+                  <div x-show="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id]" class="penerimaan-card-detail">
+                    <div class="penerimaan-detail-grid">
+                      <div>
+                        <span class="field-label">ID Input</span>
+                        <strong x-text="item['ID Input'] || item.id || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Tanggal</span>
+                        <strong x-text="item['Tanggal Input'] || item.tanggal || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Bungkusan Kecil</span>
+                        <strong x-text="item['Qty Bungkusan Kecil'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Bungkusan Besar</span>
+                        <strong x-text="item['Qty Bungkusan Besar'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Kepala</span>
+                        <strong x-text="item['Qty Kepala'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Kaki</span>
+                        <strong x-text="item['Qty Kaki'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Buntut</span>
+                        <strong x-text="item['Qty Buntut'] || '-'"></strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!riwayatMasuk.length" class="empty-text">Belum ada riwayat daging masuk.</p>
+            </div>
           </div>
         </section>
 
@@ -559,17 +979,55 @@
           </form>
           <div class="history-panel" x-show="isPanelMode('keluar', 'history')">
             <h2 class="section-title">Riwayat Daging Keluar</h2>
-            <template x-if="riwayatKeluar.length">
-              <div class="history-list">
-                <template x-for="item in riwayatKeluar" :key="item.id || item.tanggal || item.keterangan">
-                  <div class="history-item">
-                    <strong x-text="item.tanggal || item.id || 'Riwayat Keluar'"></strong>
-                    <span x-text="item.keterangan || item.Status || 'Detail tidak tersedia'"></span>
+            <div class="penerimaan-cards">
+              <template x-for="item in riwayatKeluar" :key="item['ID Input'] || item.id || item.tanggal">
+                <div class="penerimaan-card" :class="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id] ? 'is-expanded' : ''">
+                  <div class="penerimaan-card-header" @click="togglePenerimaanDetail(item['ID Input'] || item.id)">
+                    <div>
+                      <strong x-text="item['ID Input'] || item.id || 'Daging Keluar'" style="display:block;font-weight:600;color:#09090b;"></strong>
+                      <span style="font-size:0.8rem;color:#71717a;" x-text="item['Tanggal Input'] || item.tanggal || '-'"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                      <span style="background:#fee2e2;color:#dc2626;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;">Keluar</span>
+                      <i data-lucide="chevron-down" style="transition:transform 0.2s ease;" :style="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id] ? 'transform:rotate(180deg);' : ''"></i>
+                    </div>
                   </div>
-                </template>
-              </div>
-            </template>
-            <p x-show="!riwayatKeluar.length" class="empty-text">Belum ada riwayat daging keluar.</p>
+                  <div x-show="penerimaanExpanded && penerimaanExpanded[item['ID Input'] || item.id]" class="penerimaan-card-detail">
+                    <div class="penerimaan-detail-grid">
+                      <div>
+                        <span class="field-label">ID Input</span>
+                        <strong x-text="item['ID Input'] || item.id || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Tanggal</span>
+                        <strong x-text="item['Tanggal Input'] || item.tanggal || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Bungkusan Kecil</span>
+                        <strong x-text="item['Qty Bungkusan Kecil'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Bungkusan Besar</span>
+                        <strong x-text="item['Qty Bungkusan Besar'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Kepala</span>
+                        <strong x-text="item['Qty Kepala'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Kaki</span>
+                        <strong x-text="item['Qty Kaki'] || '-'"></strong>
+                      </div>
+                      <div>
+                        <span class="field-label">Buntut</span>
+                        <strong x-text="item['Qty Buntut'] || '-'"></strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!riwayatKeluar.length" class="empty-text">Belum ada riwayat daging keluar.</p>
+            </div>
           </div>
         </section>
 

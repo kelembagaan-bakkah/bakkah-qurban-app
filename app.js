@@ -80,14 +80,23 @@ function qurbanApp() {
     toast: { type: 'success', message: '' },
     successModal: { show: false, title: '', message: '' },
     successModalTimer: null,
+    sembelihanModal: {
+      show: false,
+      itemId: '',
+      itemDesc: '',
+      nextStatus: '',
+    },
     sembelihanFilter: 'semua',
     sembelihanQuery: '',
     activePanel: {
+      kupon: 'besar',
       pengiriman: 'form',
       penerimaan: 'pending',
       masuk: 'input',
       keluar: 'input',
     },
+    penerimaanExpanded: {},
+    penerimaanConfirm: { show: false, item: null },
     riwayatPengiriman: [],
     riwayatMasuk: [],
     riwayatKeluar: [],
@@ -121,6 +130,9 @@ function qurbanApp() {
     ],
     hewan: [],
     kupon: [],
+    kuponBesar: [],
+    kuponBesarFilter: 'Pending',
+    kuponBesarQuery: '',
     hewanSelesai: [],
     pengirimanBelumDiterima: [],
     dashboard: {
@@ -133,8 +145,8 @@ function qurbanApp() {
     },
     forms: {
       hewan: { jenis: 'Sapi', qty: 1, _submitting: false },
-      kupon: { jenis: 'Besar', qty: 1, _submitting: false },
-      pengiriman: { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, _submitting: false },
+      kupon: { jenis: 'Kecil', qty: 1, _submitting: false },
+      pengiriman: { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, catatan: '', _submitting: false },
       masuk: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false },
       keluar: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false },
       login: { username: '', password: '', remember: true },
@@ -344,8 +356,16 @@ function qurbanApp() {
       }).format(now)}`;
     },
     async refresh() {
-      // Throttle: skip if already loading, but allow after timeout
-      if (this._refreshPending) return;
+      // Safety: reset stuck flag after 8 detik
+      if (this._refreshPending) {
+        if (!this._refreshTimer) {
+          this._refreshTimer = setTimeout(() => {
+            this._refreshPending = false;
+            this._refreshTimer = null;
+          }, 8000);
+        }
+        return;
+      }
       this._refreshPending = true;
 
       // Show cached data immediately (no loading screen)
@@ -371,16 +391,23 @@ function qurbanApp() {
         if (!this.hasLoaded) {
           this.hasLoaded = true;
           this.fail(error);
+        } else {
+          this.toast = { type: 'error', message: error?.message || 'Gagal refresh data.' };
         }
       } finally {
         this.loading = false;
         this._refreshPending = false;
+        if (this._refreshTimer) {
+          clearTimeout(this._refreshTimer);
+          this._refreshTimer = null;
+        }
         this.syncIcons();
       }
     },
     applyData(data) {
       this.hewan = data.hewan || [];
       this.kupon = data.kupon || [];
+      this.kuponBesar = data.kuponBesar || [];
       this.hewanSelesai = data.hewanSelesai || [];
       this.pengirimanBelumDiterima = data.pengirimanBelumDiterima || [];
       this.riwayatPengiriman = data.riwayatPengiriman || [];
@@ -520,7 +547,7 @@ function qurbanApp() {
 
       callApi('inputKupon', formData)
         .then(() => {
-          this.forms.kupon = { jenis: 'Besar', qty: 1, _submitting: false };
+          this.forms.kupon = { jenis: 'Kecil', qty: 1, _submitting: false };
           this.showSuccessModal(
             'Kupon Berhasil Disimpan',
             `${formData.qty} kupon ${formData.jenis} berhasil dicatat.`
@@ -530,6 +557,34 @@ function qurbanApp() {
           this.forms.kupon = { ...formData, _submitting: false };
           this.toast = { type: 'error', message: error?.message || 'Gagal menyimpan kupon. Coba lagi.' };
         });
+    },
+    async selesaiKuponBesar(item) {
+      if (this.saving) return;
+      const id = item.ID;
+      const prevStatus = item['Status Pengambilan'];
+
+      // Optimistic
+      item['Status Pengambilan'] = 'Selesai';
+
+      try {
+        await callApi('updateStatusKuponBesar', { id });
+        this.toast = { type: 'success', message: `Kupon ${item['Nomor Kupon']} ditandai Selesai.` };
+        this.silentRefreshData();
+      } catch (error) {
+        item['Status Pengambilan'] = prevStatus;
+        this.toast = { type: 'error', message: error?.message || 'Gagal mengubah status kupon.' };
+      }
+    },
+    get filteredKuponBesar() {
+      let data = this.kuponBesar;
+      if (this.kuponBesarFilter !== 'semua') {
+        data = data.filter((item) => item['Status Pengambilan'] === this.kuponBesarFilter);
+      }
+      if (this.kuponBesarQuery) {
+        const query = this.kuponBesarQuery.toLowerCase();
+        data = data.filter((item) => (item['Nomor Kupon'] || '').toLowerCase().includes(query));
+      }
+      return data;
     },
     async submitLogin() {
       this.saving = true;
@@ -554,23 +609,51 @@ function qurbanApp() {
         this.saving = false;
       }
     },
-    // ── Optimistic UI: Toggle status sembelihan ──
-    toggleStatus(item) {
+    // ── Blocking Toggle Status Sembelihan + Modal ──
+    async toggleStatus(item) {
       const prevStatus = item['Status Sembelihan'];
       const nextStatus = prevStatus === 'SELESAI' ? 'PENDING' : 'SELESAI';
 
-      // Optimistic: langsung ubah UI (Alpine reactive — kartu langsung berubah warna)
-      item['Status Sembelihan'] = nextStatus;
+      this.saving = true;
+      this.savingMessage = nextStatus === 'SELESAI'
+        ? `Menandai ${item.Deskripsi} sebagai Selesai...`
+        : `Mengubah status ${item.Deskripsi} ke Pending...`;
 
-      callApi('updateStatusSembelihan', { id: item.ID, status: nextStatus })
-        .then(() => {
-          this.toast = { type: 'success', message: `Status ${item.Deskripsi} diubah menjadi ${nextStatus}.` };
-        })
-        .catch((error) => {
-          // Rollback
-          item['Status Sembelihan'] = prevStatus;
-          this.toast = { type: 'error', message: error?.message || 'Gagal mengubah status. Coba lagi.' };
-        });
+      try {
+        await callApi('updateStatusSembelihan', { id: item.ID, status: nextStatus });
+
+        // Sukses: update item langsung + optimistic update hewanSelesai
+        item['Status Sembelihan'] = nextStatus;
+
+        // Optimistic update hewanSelesai agar tombol "Buat Pengiriman" langsung bekerja
+        if (nextStatus === 'SELESAI' && item.Lokasi === 'RPH') {
+          if (!this.hewanSelesai.find((h) => h.ID === item.ID)) {
+            this.hewanSelesai.push(item);
+          }
+        } else if (nextStatus === 'PENDING') {
+          this.hewanSelesai = this.hewanSelesai.filter((h) => h.ID !== item.ID);
+        }
+
+        this.silentRefreshData(); // fire-and-forget — sync data di background
+
+        this.saving = false;
+
+        // Tampilkan modal khusus sembelihan
+        this.sembelihanModal = {
+          show: true,
+          itemId: item.ID,
+          itemDesc: item.Deskripsi,
+          nextStatus,
+        };
+        this.syncIcons();
+
+      } catch (error) {
+        this.saving = false;
+        this.toast = {
+          type: 'error',
+          message: error?.message || 'Gagal mengubah status. Coba lagi.',
+        };
+      }
     },
     submitPengiriman() {
       if (this.forms.pengiriman._submitting) return;
@@ -588,10 +671,11 @@ function qurbanApp() {
         jantung: this.forms.pengiriman.jantung,
         buntut: this.forms.pengiriman.buntut,
         badan: this.forms.pengiriman.badan,
+        catatan: this.forms.pengiriman.catatan || '',
       };
 
       this.forms.pengiriman._submitting = true;
-      this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, _submitting: true };
+      this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, catatan: '', _submitting: true };
       this.toast = { type: 'success', message: 'Mencatat pengiriman...' };
 
       callApi('createPengiriman', formData)
@@ -609,17 +693,36 @@ function qurbanApp() {
         });
     },
     // ── Optimistic UI: Terima pengiriman ──
+    togglePenerimaanDetail(id) {
+      if (!this.penerimaanExpanded) this.penerimaanExpanded = {};
+      this.penerimaanExpanded[id] = !this.penerimaanExpanded[id];
+    },
+    confirmTerimaPengiriman(item) {
+      this.penerimaanConfirm = { show: true, item };
+    },
+    closePenerimaanConfirm() {
+      this.penerimaanConfirm = { show: false, item: null };
+    },
     terimaPengiriman(idPengiriman) {
+      if (!idPengiriman) {
+        this.penerimaanConfirm = { show: false, item: null };
+        return;
+      }
       const index = this.pengirimanBelumDiterima.findIndex(
         (item) => item['ID Pengiriman'] === idPengiriman
       );
-      if (index === -1) return;
+      if (index === -1) {
+        this.penerimaanConfirm = { show: false, item: null };
+        return;
+      }
 
       // Simpan backup untuk rollback
       const backup = this.pengirimanBelumDiterima[index];
 
       // Optimistic: langsung hapus dari list
       this.pengirimanBelumDiterima.splice(index, 1);
+
+      this.penerimaanConfirm = { show: false, item: null };
 
       callApi('receivePengiriman', { idPengiriman })
         .then(() => {
@@ -703,6 +806,21 @@ function qurbanApp() {
         this.successModalTimer = null;
       }
       this.successModal.show = false;
+    },
+    closeSembelihanModal() {
+      this.sembelihanModal = { show: false, itemId: '', itemDesc: '', nextStatus: '' };
+    },
+    goToPengiriman(itemId) {
+      // Tutup modal
+      this.closeSembelihanModal();
+      // Set ID hewan di form pengiriman
+      this.forms.pengiriman.idHewan = itemId;
+      // Pastikan panel pengiriman di mode form (bukan history)
+      this.activePanel.pengiriman = 'form';
+      // Navigasi ke tab pengiriman
+      this.tab = 'rph-pengiriman';
+      this.mobileMenuOpen = false;
+      this.syncIcons();
     },
     saveMessageFor(fnName) {
       const messages = {

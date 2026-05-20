@@ -1,6 +1,7 @@
 const SHEETS = {
   HEWAN: 'Hewan',
   KUPON: 'Kupon',
+  KUPON_BESAR: 'Kupon Besar',
   PENGIRIMAN: 'Pengiriman',
   DAGING_MASUK: 'Daging Masuk',
   DAGING_KELUAR: 'Daging Keluar',
@@ -11,6 +12,7 @@ const SHEETS = {
 const HEADERS = {
   [SHEETS.HEWAN]: ['ID', 'Deskripsi', 'Jenis', 'Status Sembelihan', 'Lokasi', 'Tanggal Dibuat', 'Tanggal Update'],
   [SHEETS.KUPON]: ['ID Kupon', 'Jenis Kupon', 'Qty', 'Tanggal Dibuat'],
+  [SHEETS.KUPON_BESAR]: ['ID', 'Nomor Kupon', 'Jenis Hewan', 'Nomor Hewan', 'Status Pengambilan', 'Timestamp'],
   [SHEETS.PENGIRIMAN]: [
     'ID Pengiriman',
     'ID Hewan',
@@ -25,6 +27,7 @@ const HEADERS = {
     'Status',
     'Tanggal Kirim',
     'Tanggal Terima',
+    'Catatan',
   ],
   [SHEETS.DAGING_MASUK]: ['ID Input', 'Qty Bungkusan Kecil', 'Qty Bungkusan Besar', 'Qty Kepala', 'Qty Kaki', 'Qty Buntut', 'Tanggal Input'],
   [SHEETS.DAGING_KELUAR]: ['ID Input', 'Qty Bungkusan Kecil', 'Qty Bungkusan Besar', 'Qty Kepala', 'Qty Kaki', 'Qty Buntut', 'Tanggal Input'],
@@ -121,6 +124,7 @@ function getAppData() {
   // OPTIMIZED: Tidak panggil initDatabase(), baca sheet langsung
   const hewan = readSheetAsObjects_(SHEETS.HEWAN);
   const kupon = readSheetAsObjects_(SHEETS.KUPON);
+  const kuponBesar = readSheetAsObjects_(SHEETS.KUPON_BESAR);
   const pengiriman = readSheetAsObjects_(SHEETS.PENGIRIMAN);
   const dagingMasuk = readSheetAsObjects_(SHEETS.DAGING_MASUK);
   const dagingKeluar = readSheetAsObjects_(SHEETS.DAGING_KELUAR);
@@ -128,16 +132,24 @@ function getAppData() {
   return {
     hewan,
     kupon,
+    kuponBesar,
     pengiriman,
     dagingMasuk,
     dagingKeluar,
     hewanSelesai: hewan.filter((item) => item['Status Sembelihan'] === 'SELESAI' && item.Lokasi === 'RPH'),
     pengirimanBelumDiterima: pengiriman.filter((item) => item.Status === 'DIKIRIM'),
+    riwayatPengiriman: pengiriman.slice().reverse(),
+    riwayatPenerimaan: pengiriman.filter((item) => item.Status === 'DITERIMA').reverse(),
+    riwayatMasuk: dagingMasuk.slice().reverse(),
+    riwayatKeluar: dagingKeluar.slice().reverse(),
     dashboard: {
       totalHewan: hewan.length,
       totalSelesai: hewan.filter((item) => item['Status Sembelihan'] === 'SELESAI').length,
       totalPending: hewan.filter((item) => item['Status Sembelihan'] === 'PENDING').length,
       totalPengiriman: pengiriman.length,
+      totalKuponBesar: kuponBesar.length,
+      totalKuponBesarPending: kuponBesar.filter((item) => item['Status Pengambilan'] === 'Pending').length,
+      totalKuponBesarSelesai: kuponBesar.filter((item) => item['Status Pengambilan'] === 'Selesai').length,
       masuk: sumDaging_(dagingMasuk),
       keluar: sumDaging_(dagingKeluar),
     },
@@ -167,10 +179,27 @@ function registerHewan(payload) {
   }
 
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS[SHEETS.HEWAN].length).setValues(rows);
-  return { success: true, message: `${qty} data ${jenis} berhasil dibuat.` };
+
+  // Auto-generate kupon besar
+  const kuponResults = [];
+  for (let i = 0; i < qty; i += 1) {
+    const nomorHewan = startNumber + i;
+    const result = generateKuponBesar_({
+      jenis: jenis,
+      nomorHewan: nomorHewan,
+    });
+    kuponResults.push(result);
+  }
+
+  const totalKupon = kuponResults.reduce((sum, r) => sum + r.count, 0);
+  return { success: true, message: `${qty} data ${jenis} berhasil dibuat. ${totalKupon} kupon besar otomatis tergenerate.` };
 }
 
 function inputKupon(payload) {
+  // Hanya untuk Kupon Kecil (manual)
+  if (String(payload.jenis || '').trim() === 'Besar') {
+    throw new Error('Kupon Besar tidak bisa diinput manual. Kupon besar digenerate otomatis dari registrasi hewan.');
+  }
   const jenis = String(payload.jenis || '').trim();
   const qty = Number(payload.qty || 0);
 
@@ -241,6 +270,7 @@ function createPengiriman(payload) {
     'DIKIRIM',
     now,
     '',
+    String(payload.catatan || '').trim(),
   ]);
 
   // OPTIMIZED: Pakai header map yang sudah dibaca
@@ -355,6 +385,12 @@ function handleApiRequest_(params) {
         break;
       case 'login':
         data = login(payload);
+        break;
+      case 'getKuponBesar':
+        data = getKuponBesar();
+        break;
+      case 'updateStatusKuponBesar':
+        data = updateStatusKuponBesar(payload.id);
         break;
       default:
         throw new Error(`Action ${action} tidak dikenal.`);
@@ -505,6 +541,46 @@ function serializeValue_(value) {
   }
 
   return value;
+}
+
+// ── Kupon Besar ──
+
+function generateKuponBesar_(payload) {
+  const jenis = String(payload.jenis || '').trim();
+  const nomorHewan = Number(payload.nomorHewan || 0);
+
+  const jumlah = jenis === 'Sapi' ? 7 : 1;
+  const sheet = getSheet_(SHEETS.KUPON_BESAR);
+  const now = new Date();
+  const startIdBase = sheet.getLastRow() + 1;
+  const rows = [];
+
+  for (let i = 1; i <= jumlah; i += 1) {
+    const id = String(startIdBase + i - 1).padStart(4, '0');
+    const nomorKupon = `${jenis} ${nomorHewan}-${i}`;
+    rows.push([id, nomorKupon, jenis, nomorHewan, 'Pending', now]);
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS[SHEETS.KUPON_BESAR].length).setValues(rows);
+  }
+
+  return { count: rows.length };
+}
+
+function getKuponBesar() {
+  return readSheetAsObjects_(SHEETS.KUPON_BESAR);
+}
+
+function updateStatusKuponBesar(id) {
+  const sheet = getSheet_(SHEETS.KUPON_BESAR);
+  const row = findRowByValue_(sheet, 'ID', id);
+  if (row < 2) throw new Error('Kupon besar tidak ditemukan.');
+
+  const h = getHeaderMap_(sheet);
+  sheet.getRange(row, h.indexOf('Status Pengambilan')).setValue('Selesai');
+
+  return { success: true, message: `Kupon ${id} ditandai Selesai.` };
 }
 
 function sumDaging_(rows) {
