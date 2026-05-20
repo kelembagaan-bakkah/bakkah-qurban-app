@@ -444,35 +444,35 @@
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Nomor Kupon</th>
-                      <th>Status Pengambilan</th>
-                      <th>Aksi</th>
+                      <th style="min-width:auto;white-space:nowrap;">NOMOR</th>
+                      <th style="min-width:auto;white-space:nowrap;">STATUS</th>
+                      <th style="min-width:auto;white-space:nowrap;">AKSI</th>
                     </tr>
                   </thead>
                   <tbody>
                     <template x-for="item in filteredKuponBesar" :key="item.ID">
                       <tr>
-                        <td>
+                        <td style="white-space:nowrap;font-size:0.82rem;">
                           <strong x-text="item['Nomor Kupon']" style="font-weight:600;color:#09090b;"></strong>
                         </td>
-                        <td>
+                        <td style="white-space:nowrap;">
                           <span
                             x-text="item['Status Pengambilan']"
                             :style="item['Status Pengambilan'] === 'Selesai'
-                              ? 'background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;'
-                              : 'background:#fef9c3;color:#a16207;border:1px solid #fef08a;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;'"
+                              ? 'background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:0.2rem 0.55rem;border-radius:999px;font-size:0.7rem;font-weight:600;white-space:nowrap;'
+                              : 'background:#fef9c3;color:#a16207;border:1px solid #fef08a;padding:0.2rem 0.55rem;border-radius:999px;font-size:0.7rem;font-weight:600;white-space:nowrap;'"
                           ></span>
                         </td>
-                        <td>
+                        <td style="white-space:nowrap;">
                           <button
                             type="button"
                             class="btn-secondary"
                             @click="selesaiKuponBesar(item)"
                             :disabled="item['Status Pengambilan'] === 'Selesai' || saving"
-                            :style="item['Status Pengambilan'] === 'Selesai' ? 'background:#dcfce7;border-color:#bbf7d0;color:#15803d;cursor:default;opacity:1;' : ''"
+                            :style="item['Status Pengambilan'] === 'Selesai' ? 'background:#dcfce7;border-color:#bbf7d0;color:#15803d;cursor:default;opacity:1;font-size:0.72rem;min-height:32px;padding:0 0.6rem;' : 'font-size:0.72rem;min-height:32px;padding:0 0.6rem;'"
                           >
-                            <i data-lucide="check-circle" style="height:16px;width:16px;"></i>
-                            <span x-text="item['Status Pengambilan'] === 'Selesai' ? 'Selesai' : 'Selesaikan'"></span>
+                            <i data-lucide="check-circle" style="height:14px;width:14px;flex:0 0 auto;"></i>
+                            <span x-text="item['Status Pengambilan'] === 'Selesai' ? 'Selesai' : 'Selesaikan'" style="white-space:nowrap;"></span>
                           </button>
                         </td>
                       </tr>
