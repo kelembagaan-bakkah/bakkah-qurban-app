@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.1.0';
 const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60 * 1000; // 30 hari
 const SESSION_KEY = 'user_session';
