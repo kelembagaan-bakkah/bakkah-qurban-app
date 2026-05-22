@@ -92,6 +92,8 @@ function qurbanApp() {
     },
     sembelihanFilter: 'semua',
     sembelihanQuery: '',
+    sembelihanPage: 1,
+    sembelihanPageSize: 10,
     activePanel: {
       kupon: 'besar',
       pengiriman: 'form',
@@ -137,6 +139,7 @@ function qurbanApp() {
     kuponBesar: [],
     kuponBesarFilter: 'semua',
     kuponBesarQuery: '',
+    kuponBesarSelectedGroup: null,
     hewanSelesai: [],
     pengirimanBelumDiterima: [],
     dashboard: {
@@ -592,6 +595,24 @@ function qurbanApp() {
         return true;
       });
     },
+    get sembelihanTotalPages() {
+      return Math.max(1, Math.ceil(this.filteredSembelihan.length / this.sembelihanPageSize));
+    },
+    get sembelihanStart() {
+      return this.filteredSembelihan.length === 0 ? 0 : (this.sembelihanPage - 1) * this.sembelihanPageSize + 1;
+    },
+    get sembelihanEnd() {
+      return Math.min(this.sembelihanPage * this.sembelihanPageSize, this.filteredSembelihan.length);
+    },
+    get paginatedSembelihan() {
+      const start = (this.sembelihanPage - 1) * this.sembelihanPageSize;
+      return this.filteredSembelihan.slice(start, start + this.sembelihanPageSize);
+    },
+    goToSembelihanPage(page) {
+      const total = this.sembelihanTotalPages;
+      if (page < 1 || page > total) return;
+      this.sembelihanPage = page;
+    },
     submitHewan() {
       if (this.forms.hewan._submitting) return;
       const formData = { jenis: this.forms.hewan.jenis, qty: this.forms.hewan.qty };
@@ -676,6 +697,47 @@ function qurbanApp() {
         data = data.filter((item) => (item['Nomor Kupon'] || '').toLowerCase().includes(query));
       }
       return data;
+    },
+    get groupedKuponBesar() {
+      // Kelompokkan kuponBesar per "Jenis Hewan + Nomor Hewan"
+      const groups = {};
+      const raw = this.kuponBesar;
+      raw.forEach((item) => {
+        const label = `${item['Jenis Hewan'] || item.Jenis || ''} ${item['Nomor Hewan'] || ''}`.trim();
+        if (!label) return;
+        if (!groups[label]) groups[label] = { label, items: [] };
+        groups[label].items.push(item);
+      });
+      let result = Object.values(groups);
+
+      // Terapkan filter
+      if (this.kuponBesarFilter !== 'semua') {
+        const targetStatus = this.kuponBesarFilter === 'Selesai' ? 'Selesai' : 'Pending';
+        result = result.filter((g) => {
+          if (targetStatus === 'Selesai') {
+            return g.items.every((i) => i['Status Pengambilan'] === 'Selesai');
+          } else {
+            return !g.items.every((i) => i['Status Pengambilan'] === 'Selesai');
+          }
+        });
+      }
+      if (this.kuponBesarQuery) {
+        const query = this.kuponBesarQuery.toLowerCase();
+        result = result.filter((g) => g.label.toLowerCase().includes(query));
+      }
+
+      result.forEach((g) => {
+        g.totalSelesai = g.items.filter((i) => i['Status Pengambilan'] === 'Selesai').length;
+        g.total = g.items.length;
+        g.semuaSelesai = g.totalSelesai === g.total;
+      });
+
+      return result;
+    },
+    get detailKuponBesarGroup() {
+      if (!this.kuponBesarSelectedGroup) return [];
+      const group = this.groupedKuponBesar.find((g) => g.label === this.kuponBesarSelectedGroup);
+      return group ? group.items : [];
     },
     async submitLogin() {
       this.saving = true;
@@ -764,15 +826,14 @@ function qurbanApp() {
 
       this.forms.pengiriman._submitting = true;
       this.forms.pengiriman = { idHewan: '', kepala: 0, kaki: 0, paha: 0, hati: 0, jantung: 0, buntut: 0, badan: 0, catatan: '', _submitting: true };
-      this.toast = { type: 'success', message: 'Mencatat pengiriman...' };
 
       callApi('createPengiriman', formData)
         .then((result) => {
           this.forms.pengiriman._submitting = false;
-          this.toast = {
-            type: 'success',
-            message: result?.message || `Pengiriman untuk ${formData.idHewan} berhasil dibuat dan sedang dikirim ke Pondok.`,
-          };
+          this.showSuccessModal(
+            'Pengiriman Berhasil',
+            result?.message || `Pengiriman untuk hewan ${formData.idHewan} berhasil dibuat dan sedang dikirim ke Pondok.`
+          );
           this.silentRefreshData();
         })
         .catch((error) => {
@@ -814,7 +875,14 @@ function qurbanApp() {
 
       callApi('receivePengiriman', { idPengiriman })
         .then(() => {
-          this.toast = { type: 'success', message: `Pengiriman ${idPengiriman} berhasil diterima.` };
+          // Tambah ke riwayatPenerimaan secara optimistic (unshift agar muncul paling atas)
+          const diterima = { ...backup, Status: 'DITERIMA' };
+          this.riwayatPenerimaan.unshift(diterima);
+          this.showSuccessModal(
+            'Pengiriman Diterima',
+            `Pengiriman ${idPengiriman} berhasil diterima di Pondok.`
+          );
+          this.silentRefreshData();
         })
         .catch((error) => {
           // Rollback: kembalikan ke posisi semula
@@ -845,6 +913,19 @@ function qurbanApp() {
       callApi(fn, formData)
         .then(() => {
           this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false };
+          // Tambah ke riwayat secara optimistic
+          const riwayatKey = type === 'masuk' ? 'riwayatMasuk' : 'riwayatKeluar';
+          const newEntry = {
+            'ID Input': '...',
+            'Qty Bungkusan Kecil': formData.kecil || 0,
+            'Qty Bungkusan Besar': formData.besar || 0,
+            'Qty Kepala': formData.kepala || 0,
+            'Qty Kaki': formData.kaki || 0,
+            'Qty Buntut': formData.buntut || 0,
+            'Tanggal Input': new Date().toLocaleString('id-ID'),
+          };
+          this[riwayatKey].unshift(newEntry);
+          this.silentRefreshData();
           const totalBungkus = Number(formData.kecil || 0) + Number(formData.besar || 0);
           this.showSuccessModal(
             `Daging ${type === 'masuk' ? 'Masuk' : 'Keluar'} Berhasil`,

@@ -438,19 +438,53 @@
               </article>
             </div>
 
-            <div class="panel">
+            <!-- Level 1: Daftar Group per Hewan -->
+            <div x-show="!kuponBesarSelectedGroup" class="panel">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
                 <h2 class="section-title" style="margin-bottom:0;">Daftar Kupon Besar</h2>
                 <div style="display:flex;gap:0.35rem;">
-                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'semua' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'semua'">Semua</button>
-                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Pending' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Pending'">Pending</button>
-                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Selesai' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Selesai'">Selesai</button>
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'semua' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'semua'; kuponBesarSelectedGroup = null">Semua</button>
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Pending' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Pending'; kuponBesarSelectedGroup = null">Pending</button>
+                  <button type="button" class="filter-tab" :class="kuponBesarFilter === 'Selesai' ? 'filter-tab-active' : ''" @click="kuponBesarFilter = 'Selesai'; kuponBesarSelectedGroup = null">Selesai</button>
                 </div>
               </div>
 
               <div class="sembelihan-search" style="margin-bottom:1rem;">
                 <i data-lucide="search"></i>
-                <input class="field" type="text" placeholder="Cari nomor kupon..." x-model="kuponBesarQuery">
+                <input class="field" type="text" placeholder="Cari hewan..." x-model="kuponBesarQuery">
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                <template x-for="group in groupedKuponBesar" :key="group.label">
+                  <div
+                    @click="kuponBesarSelectedGroup = group.label"
+                    style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;border-radius:8px;border:1px solid #e4e4e7;cursor:pointer;background:#fff;transition:background 0.15s;"
+                    :style="group.semuaSelesai
+                      ? 'display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;border-radius:8px;border:1px solid #fca5a5;cursor:pointer;background:#fee2e2;transition:background 0.15s;'
+                      : 'display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;border-radius:8px;border:1px solid #e4e4e7;cursor:pointer;background:#fff;transition:background 0.15s;'"
+                  >
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                      <i data-lucide="chevron-right" style="height:18px;width:18px;color:#71717a;flex:0 0 auto;"></i>
+                      <strong style="font-size:0.9rem;font-weight:600;color:#09090b;" x-text="group.label"></strong>
+                    </div>
+                    <span style="font-size:0.78rem;color:#334155;font-weight:500;">
+                      <span x-text="group.totalSelesai"></span> dari <span x-text="group.total"></span> selesai
+                    </span>
+                  </div>
+                </template>
+                <p x-show="!groupedKuponBesar.length" class="empty-text">Belum ada data kupon besar. Kupon besar akan otomatis dibuat saat registrasi hewan.</p>
+              </div>
+            </div>
+
+            <!-- Level 2: Detail Kupon per Hewan -->
+            <div x-show="kuponBesarSelectedGroup" class="panel">
+              <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+                <button type="button" @click="kuponBesarSelectedGroup = null; kuponBesarQuery = ''" style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;">
+                  <i data-lucide="arrow-left" style="height:20px;width:20px;color:#334155;"></i>
+                </button>
+                <h2 class="section-title" style="margin-bottom:0;">
+                  Kupon <span x-text="kuponBesarSelectedGroup"></span>
+                </h2>
               </div>
 
               <div class="table-wrap">
@@ -463,7 +497,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template x-for="item in filteredKuponBesar" :key="item.ID">
+                    <template x-for="item in detailKuponBesarGroup" :key="item.ID">
                       <tr>
                         <td style="white-space:nowrap;font-size:0.82rem;">
                           <strong x-text="item['Nomor Kupon']" style="font-weight:600;color:#09090b;"></strong>
@@ -492,8 +526,8 @@
                         </td>
                       </tr>
                     </template>
-                    <tr x-show="!filteredKuponBesar.length">
-                      <td colspan="3" class="empty-text">Belum ada data kupon besar. Kupon besar akan otomatis dibuat saat registrasi hewan.</td>
+                    <tr x-show="!detailKuponBesarGroup.length">
+                      <td colspan="3" class="empty-text">Tidak ada kupon dalam grup ini.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -530,33 +564,61 @@
             <h2 class="section-title">Status Penyembelihan</h2>
             <div class="sembelihan-toolbar">
               <div class="sembelihan-tabs">
-                <button type="button" class="filter-tab" :class="sembelihanFilter === 'semua' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'semua'">Semua</button>
-                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Sapi' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Sapi'">Sapi</button>
-                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Kambing' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Kambing'">Kambing</button>
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'semua' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'semua'; sembelihanPage = 1">Semua</button>
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Sapi' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Sapi'; sembelihanPage = 1">Sapi</button>
+                <button type="button" class="filter-tab" :class="sembelihanFilter === 'Kambing' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Kambing'; sembelihanPage = 1">Kambing</button>
               </div>
               <div class="sembelihan-search">
                 <i data-lucide="search"></i>
-                <input class="field" type="text" placeholder="Cari ID atau deskripsi..." x-model="sembelihanQuery">
+                <input class="field" type="text" placeholder="Cari ID atau deskripsi..." x-model="sembelihanQuery" @input="sembelihanPage = 1">
               </div>
             </div>
             <div class="animal-grid">
-              <template x-for="item in filteredSembelihan" :key="item.ID">
+              <template x-for="item in paginatedSembelihan" :key="item.ID">
                 <article class="animal-card" :class="item['Status Sembelihan'] === 'SELESAI' ? 'animal-done' : 'animal-pending'">
                   <strong x-text="item.Deskripsi"></strong>
                   <span x-text="item['Status Sembelihan']"></span>
                   <button
                     type="button"
-                    class="btn-secondary"
                     @click="toggleStatus(item)"
                     :disabled="saving"
+                    style="background:#000;color:#fff;border:none;border-radius:6px;padding:0.4rem 0.85rem;font-size:0.78rem;font-weight:600;cursor:pointer;min-height:34px;display:inline-flex;align-items:center;justify-content:center;opacity:1;"
+                    :style="saving ? 'background:#000;color:#fff;border:none;border-radius:6px;padding:0.4rem 0.85rem;font-size:0.78rem;font-weight:600;cursor:not-allowed;min-height:34px;display:inline-flex;align-items:center;justify-content:center;opacity:0.6;' : 'background:#000;color:#fff;border:none;border-radius:6px;padding:0.4rem 0.85rem;font-size:0.78rem;font-weight:600;cursor:pointer;min-height:34px;display:inline-flex;align-items:center;justify-content:center;opacity:1;'"
                   >
-                    <span class="button-spinner dark" x-show="saving"></span>
-                    <i data-lucide="check-square" x-show="!saving"></i>
                     <span x-text="saving ? 'Memproses...' : 'Update Status'"></span>
                   </button>
                 </article>
               </template>
               <p x-show="!filteredSembelihan.length" class="empty-text">Tidak ada hewan yang cocok.</p>
+            </div>
+            <!-- Pagination -->
+            <div x-show="filteredSembelihan.length > 10" style="margin-top:1.25rem;padding:0.75rem 0;">
+              <div style="text-align:center;font-size:0.75rem;color:#71717a;margin-bottom:0.5rem;">
+                Menampilkan <span x-text="sembelihanStart"></span>–<span x-text="sembelihanEnd"></span> dari <span x-text="filteredSembelihan.length"></span> data
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                <button
+                  type="button"
+                  @click="goToSembelihanPage(sembelihanPage - 1)"
+                  :disabled="sembelihanPage <= 1"
+                  style="background:#000;color:#fff;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+                  :style="sembelihanPage <= 1 ? 'background:#e4e4e7;color:#a1a1aa;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;cursor:not-allowed;display:inline-flex;align-items:center;justify-content:center;opacity:0.5;' : 'background:#000;color:#fff;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;'"
+                >
+                  <i data-lucide="chevron-left" style="height:16px;width:16px;"></i>
+                </button>
+                <span style="font-size:0.8rem;color:#334155;font-weight:500;">
+                  <span x-text="sembelihanPage"></span> of <span x-text="sembelihanTotalPages"></span>
+                </span>
+                <button
+                  type="button"
+                  @click="goToSembelihanPage(sembelihanPage + 1)"
+                  :disabled="sembelihanPage >= sembelihanTotalPages"
+                  style="background:#000;color:#fff;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"
+                  :style="sembelihanPage >= sembelihanTotalPages ? 'background:#e4e4e7;color:#a1a1aa;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;cursor:not-allowed;display:inline-flex;align-items:center;justify-content:center;opacity:0.5;' : 'background:#000;color:#fff;border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;'"
+                >
+                  <i data-lucide="chevron-right" style="height:16px;width:16px;"></i>
+                </button>
+              </div>
             </div>
           </div>
         </section>
