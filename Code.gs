@@ -12,7 +12,7 @@ const SHEETS = {
 const HEADERS = {
   [SHEETS.HEWAN]: ['ID', 'Deskripsi', 'Jenis', 'Status Sembelihan', 'Lokasi', 'Tanggal Dibuat', 'Tanggal Update'],
   [SHEETS.KUPON]: ['ID Kupon', 'Jenis Kupon', 'Qty', 'Tanggal Dibuat'],
-  [SHEETS.KUPON_BESAR]: ['ID', 'Nomor Kupon', 'Jenis Hewan', 'Nomor Hewan', 'Status Pengambilan', 'Timestamp'],
+  [SHEETS.KUPON_BESAR]: ['ID', 'Nomor Kupon', 'Jenis Hewan', 'Nomor Hewan', 'Shohibul Qurban', 'Status Pengambilan', 'Timestamp'],
   [SHEETS.PENGIRIMAN]: [
     'ID Pengiriman',
     'ID Hewan',
@@ -558,7 +558,7 @@ function generateKuponBesar_(payload) {
   for (let i = 1; i <= jumlah; i += 1) {
     const id = String(startIdBase + i - 1).padStart(4, '0');
     const nomorKupon = `${jenis} ${nomorHewan}-${i}`;
-    rows.push([id, nomorKupon, jenis, nomorHewan, 'Pending', now]);
+    rows.push([id, nomorKupon, jenis, nomorHewan, '', 'Pending', now]);
   }
 
   if (rows.length > 0) {

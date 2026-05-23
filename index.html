@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900;950&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=1.1.0">
+    <link rel="stylesheet" href="./styles.css?v=1.1.1">
   </head>
   <body>
     <main x-data="qurbanApp()" x-init="init()" :aria-busy="loading || saving" x-cloak>
@@ -500,7 +500,10 @@
                     <template x-for="item in detailKuponBesarGroup" :key="item.ID">
                       <tr>
                         <td style="white-space:nowrap;font-size:0.82rem;">
-                          <strong x-text="item['Nomor Kupon']" style="font-weight:600;color:#09090b;"></strong>
+                          <div style="display:flex;flex-direction:column;gap:0.15rem;">
+                            <strong x-text="item['Nomor Kupon']" style="font-weight:600;color:#09090b;"></strong>
+                            <span x-text="item['Shohibul Qurban'] || '-'" style="color:#334155;font-size:0.82rem;font-weight:400;"></span>
+                          </div>
                         </td>
                         <td style="white-space:nowrap;">
                           <span
@@ -1152,6 +1155,6 @@
       </nav>
     </main>
 
-    <script src="./app.js?v=1.1.0"></script>
+    <script src="./app.js?v=1.1.1"></script>
   </body>
 </html>
