@@ -723,7 +723,12 @@ function qurbanApp() {
       }
       if (this.kuponBesarQuery) {
         const query = this.kuponBesarQuery.toLowerCase();
-        result = result.filter((g) => g.label.toLowerCase().includes(query));
+        result = result.filter((g) => {
+          // Cari berdasarkan label group (Jenis Hewan + Nomor Hewan)
+          if (g.label.toLowerCase().includes(query)) return true;
+          // Cari berdasarkan nama Shohibul Qurban di semua item dalam group
+          return g.items.some((i) => (i['Shohibul Qurban'] || '').toLowerCase().includes(query));
+        });
       }
 
       result.forEach((g) => {
