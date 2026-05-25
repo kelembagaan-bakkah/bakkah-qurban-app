@@ -1,19 +1,46 @@
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.1.2';
 const CACHE = `qurban-app-v${APP_VERSION}`;
 
 const STATIC_ASSETS = [
   '/',
-  `/index.html?v=${APP_VERSION}`,
-  `/app.js?v=${APP_VERSION}`,
-  `/styles.css?v=${APP_VERSION}`,
+
+
+
+  '/index.html',
   '/manifest.json',
-  '/assets/ic-kepala.png',
-  '/assets/ic-kaki.png',
-  '/assets/ic-ekor.png',
-  '/assets/ic-sapi.png',
-  '/assets/ic-kambing.png',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png'
+
+
+
+
+
+
+
+  '/src/css/app.css',
+  '/src/js/supabase.js',
+  '/src/js/store.js',
+  '/src/js/components.js',
+  '/src/js/router.js',
+  '/src/js/charts.js',
+  '/src/js/app.js',
+  '/src/components/sidebar.html',
+  '/src/components/bottom-nav.html',
+  '/src/components/transaction-form.html',
+  '/src/pages/login.html',
+  '/src/pages/dashboard.html',
+  '/src/pages/coa.html',
+  '/src/pages/transactions.html',
+  '/src/pages/fixed-expenses.html',
+  '/src/pages/profile.html',
+  '/src/pages/input-transaction.html',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js',
+  'https://unpkg.com/lucide@latest',
+  'https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js'
 ];
 
 const CDN_ASSETS = [

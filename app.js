@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.1';
 const API_URL = 'https://script.google.com/a/macros/bakkah.sch.id/s/AKfycbzIek6qAuyDTapYx4IzmVxDqYJdeF0wxUB1pQuOuqlsETUYnv2ZOe0GrTn0Bt1mKCkZ4A/exec';
 const MAX_SESSION_AGE = 30 * 24 * 60 * 60 * 1000; // 30 hari
 const SESSION_KEY = 'user_session';
@@ -135,6 +135,7 @@ function qurbanApp() {
       { key: 'buntut', label: 'Buntut' },
     ],
     hewan: [],
+    sapiKuningIds: [],
     kupon: [],
     kuponBesar: [],
     kuponBesarFilter: 'semua',
@@ -491,6 +492,7 @@ function qurbanApp() {
       this.riwayatKeluar = data.riwayatKeluar || [];
       this.riwayatPenerimaan = data.riwayatPenerimaan || [];
       this.dashboard = data.dashboard || this.dashboard;
+      this.updateSapiKuning();
     },
     stockItems(stock) {
       return [
@@ -564,6 +566,19 @@ function qurbanApp() {
 
       const idMatch = String(item.ID || '').match(/(\d+)$/);
       return idMatch ? Number(idMatch[1]) : 0;
+    },
+    updateSapiKuning() {
+      const totalBesarMasuk = Number(this.dashboard?.masuk?.besar || 0);
+      const jumlahKuning = Math.floor(totalBesarMasuk / 7);
+      if (jumlahKuning <= 0) {
+        this.sapiKuningIds = [];
+        return;
+      }
+      // Hanya sapi yang sudah SELESAI disembelih yang bisa jadi kuning
+      const semuaSapiSelesai = this.hewan
+        .filter(item => item.Jenis === 'Sapi' && item['Status Sembelihan'] === 'SELESAI')
+        .sort((a, b) => this.animalNumber(a) - this.animalNumber(b));
+      this.sapiKuningIds = semuaSapiSelesai.slice(0, jumlahKuning).map(item => item.ID);
     },
     animalRangeText(group) {
       if (!group.items.length) return '(0)';
@@ -912,6 +927,7 @@ function qurbanApp() {
         kaki:   Number(this.dashboard[dashKey].kaki   || 0) + Number(formData.kaki   || 0),
         buntut: Number(this.dashboard[dashKey].buntut || 0) + Number(formData.buntut || 0),
       };
+      this.updateSapiKuning();
 
       this.forms[type] = { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: true };
 

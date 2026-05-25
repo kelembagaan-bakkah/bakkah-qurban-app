@@ -1113,6 +1113,12 @@ textarea {
   color: #09090b;
 }
 
+.animal-number.is-yellow {
+  background: #facc15;
+  border: 1px solid #eab308;
+  color: #713f12;
+}
+
 .empty-dashboard {
   background: #ffffff;
   border: 1px dashed #e4e4e7;

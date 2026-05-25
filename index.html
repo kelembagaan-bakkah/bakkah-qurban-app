@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900;950&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css?v=1.1.1">
+    <link rel="stylesheet" href="./styles.css?v=1.2.1">
   </head>
   <body>
     <main x-data="qurbanApp()" x-init="init()" :aria-busy="loading || saving" x-cloak>
@@ -34,7 +34,7 @@
               <img src="./assets/icons/icon-512.png" alt="" class="brand-logo">
               <div class="brand-copy">
                 <h1>LAPORAN PROGRES HEWAN KURBAN</h1>
-                <p>Pantau progres penyembelihan dan distribusi daging secara real-time</p>
+                <p>Panitia Qurban Masjid Syarifah Shalihah Martapura - 2026 M / 1447 H</p>
               </div>
             </div>
           </div>
@@ -154,12 +154,12 @@
 
             <!-- Icon sesuai status -->
             <div style="margin-bottom:1rem; display:flex; justify-content:center;">
-              <template x-if="sembelihanModal.nextStatus === 'SELESAI'">
-                <i data-lucide="check-circle-2" style="width:52px; height:52px; color:#16a34a;"></i>
-              </template>
-              <template x-if="sembelihanModal.nextStatus === 'PENDING'">
-                <i data-lucide="circle-dashed" style="width:52px; height:52px; color:#64748b;"></i>
-              </template>
+              <i data-lucide="check-circle-2"
+                 x-show="sembelihanModal.nextStatus === 'SELESAI'"
+                 style="width:52px; height:52px; color:#16a34a;"></i>
+              <i data-lucide="circle-dashed"
+                 x-show="sembelihanModal.nextStatus === 'PENDING'"
+                 style="width:52px; height:52px; color:#64748b;"></i>
             </div>
 
             <!-- Judul -->
@@ -308,6 +308,7 @@
                 <div class="legend-row">
                   <span><i class="legend-box done"></i>Sudah Disembelih</span>
                   <span><i class="legend-box pending"></i>Belum Disembelih</span>
+                  <span x-show="group.jenis === 'Sapi'"><i class="legend-box" style="background:#facc15;border-color:#eab308;"></i>Kupon Besar Tersedia</span>
                 </div>
                 <div class="progress-summary">
                   <b>Total: <span x-text="group.items.length"></span></b>
@@ -317,7 +318,14 @@
               </div>
               <div class="number-grid">
                 <template x-for="item in group.items" :key="item.ID">
-                  <div class="animal-number" :class="item['Status Sembelihan'] === 'SELESAI' ? 'is-done' : 'is-pending'" x-text="animalNumber(item)"></div>
+                  <div class="animal-number"
+                       :class="item.Jenis === 'Sapi' && sapiKuningIds.includes(item.ID)
+                         ? 'is-yellow'
+                         : (item['Status Sembelihan'] === 'SELESAI'
+                             ? 'is-done'
+                             : 'is-pending')"
+                       x-text="animalNumber(item)">
+                  </div>
                 </template>
               </div>
             </article>
@@ -331,6 +339,7 @@
               <div class="note-row">
                 <span><i class="legend-box done"></i>Nomor merah = Sudah disembelih</span>
                 <span><i class="legend-box pending"></i>Nomor putih = Belum disembelih</span>
+                <span><i class="legend-box" style="background:#facc15;border-color:#eab308;"></i>Nomor kuning = Kupon Besar Tersedia</span>
               </div>
             </article>
 
@@ -1155,6 +1164,6 @@
       </nav>
     </main>
 
-    <script src="./app.js?v=1.1.1"></script>
+    <script src="./app.js?v=1.2.1"></script>
   </body>
 </html>
