@@ -90,6 +90,7 @@ function qurbanApp() {
       itemDesc: '',
       nextStatus: '',
     },
+    konfirmasiSembelihan: { show: false, item: null },
     sembelihanFilter: 'semua',
     sembelihanQuery: '',
     sembelihanPage: 1,
@@ -779,8 +780,18 @@ function qurbanApp() {
         this.saving = false;
       }
     },
-    // ── Blocking Toggle Status Sembelihan + Modal ──
-    async toggleStatus(item) {
+    // ── Konfirmasi Sembelihan: tampilkan modal dulu ──
+    toggleStatus(item) {
+      this.konfirmasiSembelihan = {
+        show: true,
+        item: item,
+      };
+    },
+
+    // ── Eksekusi API setelah user konfirmasi ──
+    async executeToggleStatus(item) {
+      this.konfirmasiSembelihan = { show: false, item: null };
+
       const prevStatus = item['Status Sembelihan'];
       const nextStatus = prevStatus === 'SELESAI' ? 'PENDING' : 'SELESAI';
 
@@ -808,7 +819,7 @@ function qurbanApp() {
 
         this.saving = false;
 
-        // Tampilkan modal khusus sembelihan
+        // Tampilkan modal sukses sembelihan
         this.sembelihanModal = {
           show: true,
           itemId: item.ID,
@@ -980,15 +991,7 @@ function qurbanApp() {
       this.toast = { type: 'error', message: error && error.message ? error.message : 'Terjadi kesalahan.' };
     },
     showSuccessModal(title, message) {
-      if (this.successModalTimer) {
-        clearTimeout(this.successModalTimer);
-        this.successModalTimer = null;
-      }
       this.successModal = { show: true, title, message };
-      this.successModalTimer = setTimeout(() => {
-        this.successModal.show = false;
-        this.successModalTimer = null;
-      }, 2400);
     },
     closeConfirmModal() {
       if (this.confirmModal.onConfirm) {
@@ -1008,10 +1011,6 @@ function qurbanApp() {
       }
     },
     closeSuccessModal() {
-      if (this.successModalTimer) {
-        clearTimeout(this.successModalTimer);
-        this.successModalTimer = null;
-      }
       this.successModal.show = false;
     },
     closeSembelihanModal() {

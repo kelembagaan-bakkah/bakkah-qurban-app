@@ -143,6 +143,39 @@
           </div>
         </div>
 
+        <!-- Modal Konfirmasi Sembelihan -->
+        <div
+          x-show="konfirmasiSembelihan.show"
+          x-transition.opacity
+          class="busy-overlay"
+          style="pointer-events:auto;"
+        >
+          <div class="busy-card" style="max-width:380px; width:100%; text-align:center; padding:1.75rem 1.5rem;">
+            <div style="margin-bottom:1rem; display:flex; justify-content:center;">
+              <i data-lucide="alert-triangle" style="width:48px; height:48px; color:#b45309;"></i>
+            </div>
+            <strong
+              x-text="'Yakin mau mengubah status sembelihan ' + (konfirmasiSembelihan.item?.Deskripsi || '') + '?'"
+              style="display:block; font-size:1.05rem; font-weight:700; color:#09090b; margin-bottom:0.5rem;"
+            ></strong>
+            <p style="font-size:0.78rem; color:#71717a; margin-bottom:1.25rem; line-height:1.5;">
+              Perubahan tidak bisa dikembalikan jika salah.
+            </p>
+            <div style="display:flex; gap:0.75rem; justify-content:center;">
+              <button
+                type="button"
+                @click="konfirmasiSembelihan = { show: false, item: null }"
+                style="padding:0.5rem 1.25rem; border-radius:6px; border:1.5px solid #d4d4d8; background:transparent; color:#09090b; font-size:0.875rem; font-weight:600; cursor:pointer;"
+              >Tidak</button>
+              <button
+                type="button"
+                @click="executeToggleStatus(konfirmasiSembelihan.item)"
+                style="padding:0.5rem 1.25rem; border-radius:6px; border:none; background:#09090b; color:#ffffff; font-size:0.875rem; font-weight:600; cursor:pointer;"
+              >Ya</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Modal Sembelihan — muncul setelah toggle status berhasil -->
         <div
           x-show="sembelihanModal.show"
@@ -607,6 +640,7 @@
                   <span x-text="item['Status Sembelihan']"></span>
                   <button
                     type="button"
+                    x-show="item['Status Sembelihan'] !== 'SELESAI'"
                     @click="toggleStatus(item)"
                     :disabled="saving"
                     style="background:#000;color:#fff;border:none;border-radius:6px;padding:0.4rem 0.85rem;font-size:0.78rem;font-weight:600;cursor:pointer;min-height:34px;display:inline-flex;align-items:center;justify-content:center;opacity:1;"
