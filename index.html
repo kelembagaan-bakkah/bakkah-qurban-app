@@ -590,7 +590,7 @@
           <div class="panel">
             <h2 class="section-title">Status Penyembelihan</h2>
             <div class="sembelihan-toolbar">
-              <div class="sembelihan-tabs">
+              <div class="sembelihan-tabs" style="display:none;">
                 <button type="button" class="filter-tab" :class="sembelihanFilter === 'semua' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'semua'; sembelihanPage = 1">Semua</button>
                 <button type="button" class="filter-tab" :class="sembelihanFilter === 'Sapi' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Sapi'; sembelihanPage = 1">Sapi</button>
                 <button type="button" class="filter-tab" :class="sembelihanFilter === 'Kambing' ? 'filter-tab-active' : ''" @click="sembelihanFilter = 'Kambing'; sembelihanPage = 1">Kambing</button>
