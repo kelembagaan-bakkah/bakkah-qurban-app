@@ -282,16 +282,31 @@
               <img src="./assets/ic-kepala.png" alt="" class="part-icon">
               <span>JUMLAH KEPALA</span>
               <strong x-text="formatNumber(partTotal('kepala'))"></strong>
+              <p class="part-tersedia">Tersedia</p>
+              <div class="part-detail">
+                <span>Masuk: <b x-text="formatNumber(dashboard.masuk.kepala)"></b></span>
+                <span>Keluar: <b x-text="formatNumber(dashboard.keluar.kepala)"></b></span>
+              </div>
             </article>
             <article class="part-card part-brown compact-metric">
               <img src="./assets/ic-kaki.png" alt="" class="part-icon">
               <span>JUMLAH KAKI</span>
               <strong x-text="formatNumber(partTotal('kaki'))"></strong>
+              <p class="part-tersedia">Tersedia</p>
+              <div class="part-detail">
+                <span>Masuk: <b x-text="formatNumber(dashboard.masuk.kaki)"></b></span>
+                <span>Keluar: <b x-text="formatNumber(dashboard.keluar.kaki)"></b></span>
+              </div>
             </article>
             <article class="part-card part-teal compact-metric">
               <img src="./assets/ic-ekor.png" alt="" class="part-icon">
               <span>JUMLAH BUNTUT</span>
               <strong x-text="formatNumber(partTotal('buntut'))"></strong>
+              <p class="part-tersedia">Tersedia</p>
+              <div class="part-detail">
+                <span>Masuk: <b x-text="formatNumber(dashboard.masuk.buntut)"></b></span>
+                <span>Keluar: <b x-text="formatNumber(dashboard.keluar.buntut)"></b></span>
+              </div>
             </article>
           </div>
 
