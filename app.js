@@ -160,6 +160,8 @@ function qurbanApp() {
       keluar: { kecil: 0, besar: 0, kepala: 0, kaki: 0, buntut: 0, _submitting: false },
       login: { username: '', password: '', remember: true },
     },
+    takbeerPlaying: false,
+    takbeerAudio: null,
     init() {
       // Auto-detect version update
       const savedVersion = localStorage.getItem('app_version');
@@ -199,6 +201,8 @@ function qurbanApp() {
       } else {
         this.refresh();
       }
+
+      this.initTakbeer();
     },
     autoRefreshTimer: null,
     startAutoRefresh() {
@@ -263,6 +267,60 @@ function qurbanApp() {
       setTimeout(() => {
         if (window.lucide) window.lucide.createIcons();
       }, 0);
+    },
+    isDesktopDevice() {
+      return window.innerWidth >= 768 && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && !('ontouchstart' in window);
+    },
+    _ensureTakbeerAudio() {
+      if (!this.takbeerAudio) {
+        this.takbeerAudio = new Audio('./assets/sound/takbeer.mp3');
+        this.takbeerAudio.loop = true;
+        this.takbeerAudio.volume = 0.7;
+      }
+      return this.takbeerAudio;
+    },
+    initTakbeer() {
+      if (!this.isDesktopDevice() || this.isLoggedIn()) return;
+      const audio = this._ensureTakbeerAudio();
+      audio.play().then(() => {
+        this.takbeerPlaying = true;
+      }).catch(() => {
+        // Autoplay diblokir browser — pasang satu kali listener interaksi user
+        this.takbeerPlaying = false;
+        const playOnInteraction = () => {
+          document.removeEventListener('click', playOnInteraction);
+          document.removeEventListener('touchstart', playOnInteraction);
+          document.removeEventListener('keydown', playOnInteraction);
+          if (this.isLoggedIn()) return;
+          audio.play().then(() => {
+            this.takbeerPlaying = true;
+          }).catch(() => {});
+        };
+        document.addEventListener('click', playOnInteraction, { once: true });
+        document.addEventListener('touchstart', playOnInteraction, { once: true });
+        document.addEventListener('keydown', playOnInteraction, { once: true });
+      });
+    },
+    toggleTakbeer() {
+      const audio = this._ensureTakbeerAudio();
+      if (this.takbeerPlaying) {
+        audio.pause();
+        audio.currentTime = 0;
+        this.takbeerPlaying = false;
+      } else {
+        audio.play().then(() => {
+          this.takbeerPlaying = true;
+        }).catch(() => {
+          this.takbeerPlaying = false;
+        });
+      }
+    },
+    stopTakbeer() {
+      if (this.takbeerAudio) {
+        this.takbeerAudio.pause();
+        this.takbeerAudio.currentTime = 0;
+        this.takbeerPlaying = false;
+      }
     },
     busyMessage() {
       if (this.saving) return this.savingMessage;
@@ -767,6 +825,7 @@ function qurbanApp() {
       try {
         const user = await callApi('login', this.forms.login);
         this.currentUser = user;
+        this.stopTakbeer();
         this.stopAutoRefresh(); // Silent refresh tidak diperlukan untuk user yang login
         this.saveSession(user, this.forms.login.remember);
         this.forms.login = { username: '', password: '', remember: true };

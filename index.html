@@ -43,10 +43,19 @@
               <p x-text="dateLabel"></p>
               <p class="clock-sub" x-text="timeLabel"></p>
             </div>
+            <button
+              type="button"
+              class="header-refresh"
+              x-show="!isLoggedIn() && isDesktopDevice()"
+              @click="toggleTakbeer()"
+              :aria-label="takbeerPlaying ? 'Pause Takbeer' : 'Play Takbeer'"
+            >
+              <i data-lucide="pause" x-show="takbeerPlaying"></i>
+              <i data-lucide="play" x-show="!takbeerPlaying"></i>
+            </button>
             <button type="button" class="header-refresh" @click="refresh()" :disabled="loading">
               <span class="button-spinner" x-show="loading"></span>
               <i data-lucide="refresh-cw" x-show="!loading"></i>
-              <span x-text="loading ? 'Memuat...' : 'Refresh'"></span>
             </button>
             <button x-show="!isLoggedIn()" type="button" class="login-button" @click="openLogin()">
               <i data-lucide="log-in"></i>
